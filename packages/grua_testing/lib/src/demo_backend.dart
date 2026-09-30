@@ -1,32 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import '../../calls/voice_call.dart';
-import '../../domain/enums.dart';
-import '../../domain/failures.dart';
-import '../../domain/models/app_user.dart';
-import '../../domain/models/billing.dart';
-import '../../domain/models/chat_prefs.dart';
-import '../../domain/models/chat_request.dart';
-import '../../domain/models/dispatch_models.dart';
-import '../../domain/models/driver.dart';
-import '../../domain/models/insurer.dart';
-import '../../domain/models/insurer_invoice.dart';
-import '../../domain/models/insurer_service.dart';
-import '../../domain/models/payments.dart';
-import '../../domain/models/pricing_rule.dart';
-import '../../domain/models/remote_config_models.dart';
-import '../../domain/models/service.dart';
-import '../../domain/models/settlement.dart';
-import '../../domain/models/truck.dart';
-import '../../domain/repositories.dart';
-import '../../domain/value_objects.dart';
-import '../../utils/do_validators.dart';
-import '../../utils/money.dart';
-import '../insurer_invoicing.dart';
-import '../pricing.dart';
-import '../settlements.dart';
-import '../zone_pricing.dart';
+import 'package:grua_core/grua_core.dart';
 
 /// An in-memory stand-in for the whole backend.
 ///
@@ -99,6 +74,8 @@ class DemoBackend {
   final _messagesController = StreamController<String>.broadcast();
   final _trackingController = StreamController<String>.broadcast();
   final _chatRequestsController = StreamController<void>.broadcast();
+  final _reviews = <String, DriverReview>{};
+  final _reviewsController = StreamController<void>.broadcast();
   final _chatRequestMessagesController = StreamController<String>.broadcast();
 
   /// Who is typing where: `threadKey` → uid → when the last keystroke landed.
@@ -272,6 +249,8 @@ class DemoBackend {
         isOnline: status == DriverStatus.active && i < 5,
         rating: 4.4 + (i % 5) * 0.12,
         ratingCount: 30 + i * 11,
+        // What the average is read from, so it agrees with the score.
+        ratingSum: ((4.4 + (i % 5) * 0.12) * (30 + i * 11)).round(),
         completedServices: 40 + i * 13,
         offersSent: 100 + i * 20,
         offersAccepted: 78 + i * 16,
@@ -694,6 +673,15 @@ class DemoBackend {
   /// Last week for [driverId], as the demo app shows it: three insurer tows
   /// and two cash tows — the office's own example, Carlos's week — made into
   /// a corte that is waiting to be paid.
+  /// Rewrites a chofer's record, for a test that needs a history the seed
+  /// does not have.
+  void updateDriverForTest(String driverId, Driver Function(Driver) change) {
+    final driver = _drivers[driverId];
+    if (driver == null) return;
+    _drivers[driverId] = change(driver);
+    _emitDrivers();
+  }
+
   void seedDriverWeek(String driverId) {
     if (!_seededWeeks.add(driverId) || !_drivers.containsKey(driverId)) return;
     final now = _now().toUtc();
@@ -769,6 +757,166 @@ class DemoBackend {
   Stream<Map<String, DriverLivePosition>> get liveUpdates async* {
     yield Map.unmodifiable(_live);
     yield* _liveController.stream;
+  }
+
+  /// Customers' reviews of choferes, newest first, as `watchReviews` reads
+  /// them.
+  Stream<List<DriverReview>> reviewUpdates({
+    String? driverId,
+    bool openOnly = false,
+    int limit = 50,
+  }) async* {
+    List<DriverReview> current() => (_reviews.values
+            .where((r) => driverId == null || r.driverId == driverId)
+            .where((r) => !openOnly || r.isOpen)
+            .toList()
+          ..sort((a, b) => (b.ratedAt ?? DateTime(0))
+              .compareTo(a.ratedAt ?? DateTime(0))))
+        .take(limit)
+        .toList();
+    yield current();
+    yield* _reviewsController.stream.map((_) => current());
+  }
+
+  DriverReview? review(String serviceId) => _reviews[serviceId];
+
+  /// Rates a finished service the way `rateService` does: once per side, a
+  /// week at most after the tow, and a customer's rating folded into the
+  /// chofer's summary and filed as a review.
+  Result<void> rateService(
+    String serviceId,
+    String raterId, {
+    required int stars,
+    List<DriverRatingTag> tags = const [],
+    String comment = '',
+  }) {
+    final service = _services[serviceId];
+    if (service == null) return const Err(Failure(FailureCode.notFound));
+    final isClient = service.clientId == raterId;
+    if (!isClient && service.driverId != raterId) {
+      return const Err(
+        Failure(FailureCode.permissionDenied, message: 'Este servicio no es tuyo.'),
+      );
+    }
+    if (service.status != ServiceStatus.completed &&
+        service.status != ServiceStatus.closed) {
+      return const Err(
+        Failure(
+          FailureCode.invalidTransition,
+          message: 'Puedes calificar cuando termine el servicio.',
+        ),
+      );
+    }
+    final finished = service.timeline.completedAt;
+    if (finished != null && _now().difference(finished) > const Duration(days: 7)) {
+      return const Err(
+        Failure(
+          FailureCode.invalidTransition,
+          message: 'Solo puedes calificar durante 7 días después del servicio.',
+        ),
+      );
+    }
+    final existing =
+        isClient ? service.ratings.clientToDriver : service.ratings.driverToClient;
+    if (existing != null && existing.isRated) {
+      return const Err(
+        Failure(FailureCode.invalidInput, message: 'Ya calificaste este servicio.'),
+      );
+    }
+
+    final kept = [
+      for (final tag in {...tags})
+        if (tag != DriverRatingTag.unknown && tag.positive == (stars >= 4)) tag,
+    ];
+    final text = comment.trim();
+    final rating = ServiceRating(
+      stars: stars,
+      comment: text,
+      tags: isClient ? [for (final tag in kept) tag.wire] : const [],
+      ratedAt: _now(),
+    );
+    _services[serviceId] = service.copyWith(
+      ratings: isClient
+          ? service.ratings.copyWith(clientToDriver: rating)
+          : service.ratings.copyWith(driverToClient: rating),
+    );
+
+    final driverId = service.driverId;
+    final driver = driverId == null ? null : _drivers[driverId];
+    if (isClient && driver != null) {
+      final sum = driver.ratingSum + stars;
+      final count = driver.ratingCount + 1;
+      final starCounts = {...driver.ratingStars};
+      starCounts['$stars'] = (starCounts['$stars'] ?? 0) + 1;
+      final tagCounts = {...driver.ratingTags};
+      for (final tag in kept) {
+        tagCounts[tag.wire] = (tagCounts[tag.wire] ?? 0) + 1;
+      }
+      _drivers[driver.id] = driver.copyWith(
+        ratingSum: sum,
+        ratingCount: count,
+        rating: ((sum + 4.8 * 5) / (count + 5) * 100).round() / 100,
+        ratingStars: starCounts,
+        ratingTags: tagCounts,
+        recentFeedback: [
+          DriverFeedback(
+            stars: stars,
+            tags: [for (final tag in kept) tag.wire],
+            comment: text,
+          ),
+          ...driver.recentFeedback,
+        ].take(10).toList(),
+      );
+
+      final flagged = stars <= 2 || kept.any((t) => t.serious);
+      _reviews[serviceId] = DriverReview(
+        serviceId: serviceId,
+        serviceCode: service.code,
+        driverId: driver.id,
+        driverName: service.driverName.isEmpty ? driver.name : service.driverName,
+        clientId: service.clientId,
+        clientName: service.clientName,
+        stars: stars,
+        tags: [for (final tag in kept) tag.wire],
+        comment: text,
+        status: flagged ? DriverReviewStatus.open : DriverReviewStatus.ok,
+        ratedAt: _now(),
+      );
+      _reviewsController.add(null);
+      _emitDrivers();
+    }
+    _emitServices();
+    return const Ok(null);
+  }
+
+  /// Closes a flagged review, as `resolveDriverReview` does.
+  Result<void> resolveReview(String serviceId, String actorId, String note) {
+    final review = _reviews[serviceId];
+    if (review == null) return const Err(Failure(FailureCode.notFound));
+    if (!review.isOpen) {
+      return const Err(
+        Failure(
+          FailureCode.invalidTransition,
+          message: 'Esa evaluación no está pendiente.',
+        ),
+      );
+    }
+    if (note.trim().length < 3) {
+      return const Err(
+        Failure(
+          FailureCode.invalidInput,
+          message: 'Escribe qué se hizo con esta evaluación.',
+        ),
+      );
+    }
+    _reviews[serviceId] = review.copyWith(
+      status: DriverReviewStatus.resolved,
+      resolutionNote: note.trim(),
+      resolvedBy: actorId,
+      resolvedAt: _now(),
+    );
+    _reviewsController.add(null);
+    return const Ok(null);
   }
 
   /// Stands in for `/presence`: the choferes with the app open right now.
@@ -1233,8 +1381,8 @@ class DemoBackend {
     _emitLive();
   }
 
-  /// Demo mode has no bucket, so an uploaded photo is kept here as a data URI
-  /// and handed back as its "download URL".
+  /// There is no bucket, so an uploaded photo is kept here as a data URI and
+  /// handed back as its "download URL".
   final _uploads = <String, String>{};
 
   void storeUpload(String path, String dataUri) => _uploads[path] = dataUri;
@@ -2864,6 +3012,21 @@ class DemoBackend {
     return candidates.first;
   }
 
+  /// Files the chofer's proof photos on the service, as `startService` and
+  /// `completeService` patch `pickupPhotoPaths` / `dropoffPhotoPaths`.
+  void recordProofPhotos(
+    String serviceId,
+    ServicePhotoStage stage,
+    List<String> paths,
+  ) {
+    final service = _services[serviceId];
+    if (service == null) return;
+    _services[serviceId] = switch (stage) {
+      ServicePhotoStage.pickup => service.copyWith(pickupPhotoPaths: paths),
+      ServicePhotoStage.dropoff => service.copyWith(dropoffPhotoPaths: paths),
+    };
+  }
+
   /// Applies a status change the way `applyTransition` does server-side.
   Result<void> transition(
     String serviceId,
@@ -3834,6 +3997,7 @@ class DemoBackend {
     unawaited(_messagesController.close());
     unawaited(_trackingController.close());
     unawaited(_chatRequestsController.close());
+    unawaited(_reviewsController.close());
     unawaited(_chatRequestMessagesController.close());
     unawaited(_typingController.close());
   }

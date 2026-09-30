@@ -41,7 +41,6 @@ class AppConfig {
     this.recaptchaSiteKey = '',
     this.appCheckDebugToken = '',
     this.disableAppVerification = false,
-    this.useDemoBackend = false,
   });
 
   /// Reads every value from the compile-time environment.
@@ -64,7 +63,6 @@ class AppConfig {
       // into a release build does nothing.
       appCheckDebugToken: const String.fromEnvironment('APP_CHECK_DEBUG_TOKEN'),
       useEmulators: const bool.fromEnvironment('USE_EMULATORS'),
-      useDemoBackend: const bool.fromEnvironment('USE_DEMO_BACKEND'),
       // Deliberately ANDed with kDebugMode rather than just read: a release
       // binary that skips reCAPTCHA and Play Integrity would let anyone mint
       // an SMS code for a number they do not own, so the define cannot turn
@@ -111,15 +109,6 @@ class AppConfig {
   /// `--dart-define=DISABLE_APP_VERIFICATION=true`.
   final bool disableAppVerification;
 
-  /// Runs against the in-memory demo backend instead of Firebase, for a demo
-  /// or a fresh clone with no project.
-  ///
-  /// It has to be asked for: the demo backend accepts any email with any
-  /// password of four characters or more, so a build that reached it by
-  /// accident looks like an app with no password check at all. A build that
-  /// ships `firebase_options.dart` and cannot reach Firebase now stops on an
-  /// error screen instead of quietly signing people in here.
-  final bool useDemoBackend;
   final String emulatorHost;
   final String functionsRegion;
 
@@ -149,12 +138,6 @@ class AppConfig {
     }
     if (useEmulators) {
       throw StateError('USE_EMULATORS must never be true in a production build.');
-    }
-    if (useDemoBackend) {
-      throw StateError(
-        'USE_DEMO_BACKEND must never be true in a production build: it signs '
-        'anyone in without checking the password.',
-      );
     }
     // Unreachable while the flag is gated on kDebugMode, kept so the guard
     // survives anyone loosening that gate.

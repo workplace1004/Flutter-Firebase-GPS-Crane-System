@@ -333,12 +333,12 @@ describeEmulator('an insurer’s tow, end to end', () => {
 
       const atPickup = { latitude: PICKUP.latitude, longitude: PICKUP.longitude };
       await call(lifecycle.markArrived, { serviceId: first, position: atPickup }, DRIVER);
-      await call(lifecycle.startService, { serviceId: first, photoPaths: [] }, DRIVER);
+      await call(lifecycle.startService, { serviceId: first, photoPaths: [`service_photos/${first}/pickup_1.jpg`] }, DRIVER);
 
       const before = await service(first);
       const result = await call(
         lifecycle.completeService,
-        { serviceId: first, position: DROPOFF, photoPaths: [] },
+        { serviceId: first, position: DROPOFF, photoPaths: [`service_photos/${first}/dropoff_1.jpg`] },
         DRIVER,
       );
       expect(result).toMatchObject({ ok: true, finalCents: 295_000, billedToInsurer: true, waitingMinutes: 0 });

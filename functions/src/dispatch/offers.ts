@@ -9,6 +9,7 @@ import {
 import { Code, precondition } from '../lib/errors.js';
 import { FieldValue, Paths, db } from '../lib/firestore.js';
 import { dismissOffer, notify } from '../lib/push.js';
+import { averageRating } from '../lib/driverRating.js';
 import { applyTransition } from '../lib/stateMachine.js';
 import { dispatchNext } from './dispatchNext.js';
 
@@ -95,7 +96,11 @@ export async function acceptOffer(options: {
         driverName: current['name'] ?? '',
         driverPhone: current['phone'] ?? '',
         driverPhotoUrl: current['photoUrl'] ?? '',
-        driverRating: current['rating'] ?? 0,
+        // What the customer reads: the plain average, 0 before any rating.
+        driverRating: averageRating(
+          (current['ratingSum'] as number | undefined) ?? 0,
+          (current['ratingCount'] as number | undefined) ?? 0,
+        ),
         truckId: truckId ?? null,
         truckPlate: current['assignedTruckPlate'] ?? '',
         assignedAt: FieldValue.serverTimestamp(),

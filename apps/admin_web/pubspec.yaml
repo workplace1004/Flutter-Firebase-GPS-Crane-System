@@ -33,6 +33,9 @@ dependencies:
   data_table_2: ^3.0.0
 
 dev_dependencies:
+  # The in-memory backend the tests run against.
+  grua_testing:
+    path: ../../packages/grua_testing
   flutter_test:
     sdk: flutter
   intl: ^0.20.3

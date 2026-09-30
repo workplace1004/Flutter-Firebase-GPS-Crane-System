@@ -46,6 +46,9 @@ dependencies:
   fl_chart: ^1.2.0
 
 dev_dependencies:
+  # The in-memory backend the tests run against.
+  grua_testing:
+    path: ../../packages/grua_testing
   flutter_launcher_icons: ^0.14.4
   flutter_test:
     sdk: flutter

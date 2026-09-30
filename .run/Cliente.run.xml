@@ -2,7 +2,7 @@
   <!-- La app del cliente.
 
        El argumento de abajo es lo que entrega las llaves al lado Dart. Sin
-       GOOGLE_MAPS_API_KEY toda la app dibuja el mapa de demostración y la
+       GOOGLE_MAPS_API_KEY toda la app dibuja el mapa esquemático y la
        búsqueda de direcciones se queda sin llave con que llamar. La ruta es
        relativa a la carpeta de la app, que es desde donde el plugin de
        Flutter ejecuta. -->

@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:grua_core/grua_core.dart';
+import 'package:grua_testing/grua_testing.dart';
 
 /// The demo backend's weekly cortes have to behave like the callables, or the
 /// screens are built against a server that does not exist.

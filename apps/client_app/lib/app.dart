@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:grua_core/grua_core.dart';
 
+import 'push_routes.dart';
 import 'router.dart';
 
 class ClientApp extends ConsumerWidget {
@@ -38,9 +39,18 @@ class ClientApp extends ConsumerWidget {
           context,
           MediaQuery(
             data: MediaQuery.of(context).copyWith(textScaler: scale),
-            // Above the navigator, so a call rings on whatever screen is open
-            // and carries on when the person moves between screens.
-            child: CallLayer(child: child ?? const SizedBox.shrink()),
+            // Registers this phone for push while somebody is signed in, and
+            // opens the screen a tapped notification is about.
+            child: PushBinding(
+              audience: PushAudience.client,
+              onOpen: (data) {
+                final route = clientRouteForPush(data);
+                if (route != null) ref.read(routerProvider).go(route);
+              },
+              // Above the navigator, so a call rings on whatever screen is
+              // open and carries on when the person moves between screens.
+              child: CallLayer(child: child ?? const SizedBox.shrink()),
+            ),
           ),
         );
       },

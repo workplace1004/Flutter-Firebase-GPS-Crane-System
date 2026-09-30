@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:grua_core/grua_core.dart';
 
+import '../evaluations/evaluation_widgets.dart';
 import 'driver_status_dialog.dart';
 
 /// Everything on file for one chofer, read-only.
@@ -139,15 +140,18 @@ class DriverDetailsDialog extends ConsumerWidget {
                       ),
                       ('Servicios completados', '${d.completedServices}'),
                       (
-                        'Calificación',
-                        '${d.rating.toStringAsFixed(1)} (${d.ratingCount})',
-                      ),
-                      ('Acepta', d.acceptanceLabel),
-                      (
                         'Efectivo pendiente',
                         d.cashOwedCents == 0 ? '—' : d.cashOwedCents.formatDOP,
                       ),
                     ]),
+                    const _SectionTitle('Evaluación'),
+                    Padding(
+                      padding: const EdgeInsets.only(
+                        top: Insets.sm,
+                        bottom: Insets.lg,
+                      ),
+                      child: DriverScorecardView(driver: d),
+                    ),
                     _Section('Facturación', [
                       ('Empresa', orDash(d.companyName)),
                       ('RNC', orDash(d.rnc)),
@@ -276,13 +280,7 @@ class _Section extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              FieldLabel(title.toUpperCase()),
-              const SizedBox(width: Insets.sm),
-              Expanded(child: Divider(color: palette.border)),
-            ],
-          ),
+          _SectionTitle(title),
           const SizedBox(height: Insets.xs),
           for (final (label, value) in rows)
             Padding(
@@ -306,4 +304,20 @@ class _Section extends StatelessWidget {
       ),
     );
   }
+}
+
+/// A section's heading: its name, then a rule to the edge.
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle(this.title);
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        children: [
+          FieldLabel(title.toUpperCase()),
+          const SizedBox(width: Insets.sm),
+          Expanded(child: Divider(color: context.palette.border)),
+        ],
+      );
 }

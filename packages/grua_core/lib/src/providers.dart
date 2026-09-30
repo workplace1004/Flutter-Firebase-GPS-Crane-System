@@ -1,20 +1,18 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-// Riverpod 3 keeps `Override` out of the default export surface.
+// Riverpod 3 keeps the family types out of the default export surface.
 import 'package:flutter_riverpod/misc.dart'
-    show FutureProviderFamily, Override, ProviderFamily, StreamProviderFamily;
+    show FutureProviderFamily, ProviderFamily, StreamProviderFamily;
 
 import 'calls/voice_call.dart';
-import 'calls/voice_transport.dart';
 import 'config/app_config.dart';
 import 'config/maps_script.dart';
-import 'data/demo/demo_backend.dart';
-import 'data/demo/demo_repositories.dart';
 import 'data/insurer_invoicing.dart';
 import 'data/insurer_stats.dart';
 import 'data/settlements.dart';
 import 'domain/enums.dart';
+import 'domain/failures.dart';
 import 'domain/models/app_user.dart';
 import 'domain/models/billing.dart';
 import 'domain/models/chat_prefs.dart';
@@ -39,23 +37,14 @@ import 'utils/date_time_do.dart';
 /// Dependency wiring for all three apps.
 ///
 /// Repositories are declared here as unimplemented providers and bound at
-/// startup by `runGruaApp`, which chooses the demo or Firebase implementation.
-/// Screens depend on the interface only, so the same widget tree runs against
-/// an in-memory backend in a widget test, the emulator in development, and
-/// production — with no conditionals inside the UI.
+/// startup by `runGruaApp` to the Firebase implementation. Screens depend on
+/// the interface only, so the same widget tree runs against the in-memory
+/// backend in `grua_testing` in a widget test, the emulator in development,
+/// and production — with no conditionals inside the UI.
 
 /// Build configuration. Overridden in `main()` with the app's own [AppKind].
 final appConfigProvider = Provider<AppConfig>(
   (ref) => throw UnimplementedError('appConfigProvider must be overridden'),
-);
-
-/// The in-memory backend. Only bound when running in demo mode.
-final demoBackendProvider = Provider<DemoBackend>(
-  (ref) {
-    final backend = DemoBackend()..seed();
-    ref.onDispose(backend.dispose);
-    return backend;
-  },
 );
 
 // ---------------------------------------------------------------------------
@@ -134,48 +123,6 @@ final configRepositoryProvider = Provider<ConfigRepository>(
 final functionsGatewayProvider = Provider<FunctionsGateway>(
   (ref) => throw UnimplementedError('functionsGatewayProvider must be overridden'),
 );
-
-/// Binds every repository to the in-memory demo backend.
-///
-/// Used by demo builds and by widget tests. Pass a pre-seeded [backend] from a
-/// test to control the fixture, and [actingAs] to sign in as somebody other
-/// than the seeded customer — the driver app runs the same wiring as a chofer.
-List<Override> demoOverrides({
-  DemoBackend? backend,
-  UserRole role = UserRole.client,
-  String? actingAs,
-  VoiceTransport Function()? voiceTransport,
-}) {
-  final instance = backend ?? (DemoBackend()..seed());
-  if (actingAs != null) instance.currentUserId = actingAs;
-  return [
-    demoBackendProvider.overrideWithValue(instance),
-    authRepositoryProvider
-        .overrideWithValue(DemoAuthRepository(instance, role: role)),
-    userRepositoryProvider.overrideWithValue(DemoUserRepository(instance)),
-    driverRepositoryProvider.overrideWithValue(DemoDriverRepository(instance)),
-    truckRepositoryProvider.overrideWithValue(DemoTruckRepository(instance)),
-    serviceRepositoryProvider.overrideWithValue(DemoServiceRepository(instance)),
-    offerRepositoryProvider.overrideWithValue(DemoOfferRepository(instance)),
-    callRepositoryProvider.overrideWithValue(DemoCallRepository(instance)),
-    // No LiveKit server in demo mode: calls ring and connect without audio.
-    voiceTransportFactoryProvider
-        .overrideWithValue(voiceTransport ?? SilentVoiceTransport.new),
-    chatRepositoryProvider.overrideWithValue(DemoChatRepository(instance)),
-    chatRequestRepositoryProvider
-        .overrideWithValue(DemoChatRequestRepository(instance)),
-    typingRepositoryProvider.overrideWithValue(DemoTypingRepository(instance)),
-    chatPrefsRepositoryProvider
-        .overrideWithValue(DemoChatPrefsRepository(instance)),
-    earningsRepositoryProvider
-        .overrideWithValue(DemoEarningsRepository(instance)),
-    invoiceRepositoryProvider.overrideWithValue(DemoInvoiceRepository(instance)),
-    insurerRepositoryProvider.overrideWithValue(DemoInsurerRepository(instance)),
-    configRepositoryProvider.overrideWithValue(DemoConfigRepository(instance)),
-    functionsGatewayProvider
-        .overrideWithValue(DemoFunctionsGateway(instance)),
-  ];
-}
 
 // ---------------------------------------------------------------------------
 // Device
@@ -347,6 +294,17 @@ final StreamProviderFamily<Service?, String> serviceByIdProvider =
 final StreamProviderFamily<ServiceTracking?, String> serviceTrackingProvider =
     StreamProvider.family<ServiceTracking?, String>(
   (ref, id) => ref.watch(serviceRepositoryProvider).watchTracking(id),
+);
+
+/// A viewable URL for one of the chofer's proof photos, by storage path.
+/// Null when it cannot be read — deleted, or the viewer is not staff.
+final FutureProviderFamily<String?, String> servicePhotoUrlProvider =
+    FutureProvider.family<String?, String>(
+  (ref, path) async => switch (
+      await ref.watch(serviceRepositoryProvider).servicePhotoUrl(path)) {
+    Ok(:final value) => value,
+    Err() => null,
+  },
 );
 
 final StreamProviderFamily<List<ServiceEvent>, String> serviceEventsProvider =

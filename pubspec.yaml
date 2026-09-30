@@ -9,6 +9,7 @@ environment:
 
 workspace:
   - packages/grua_core
+  - packages/grua_testing
   - apps/client_app
   - apps/driver_app
   - apps/admin_web

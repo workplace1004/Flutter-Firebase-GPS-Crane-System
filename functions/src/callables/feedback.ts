@@ -3,9 +3,30 @@ import { z } from 'zod';
 
 import { CONTACT_OPEN_STATUSES, ServiceStatus } from '../lib/enums.js';
 import { Code, invalidArgument, precondition } from '../lib/errors.js';
-import { FieldValue, Paths } from '../lib/firestore.js';
-import { requireActiveDriver, requireAuth } from '../lib/guards.js';
+import {
+  ALL_TAGS,
+  applyRating,
+  type DriverRatingSummary,
+  needsReview,
+  RATING_WINDOW_DAYS,
+  tagsFor,
+  withinRatingWindow,
+} from '../lib/driverRating.js';
+import { db, FieldValue, Paths } from '../lib/firestore.js';
+import { requireActiveDriver, requireAuth, requireStaff } from '../lib/guards.js';
+import { alertAdmins } from '../lib/push.js';
+import { audit } from './admin.js';
 import { region } from './region.js';
+
+/** Where a customer's review of a chofer stands with the office. */
+export const ReviewStatus = {
+  /** Nothing to look at. */
+  ok: 'ok',
+  /** Low stars or a serious complaint: waiting for the office. */
+  open: 'open',
+  /** The office looked into it and wrote down what it found. */
+  resolved: 'resolved',
+} as const;
 
 /**
  * Rating a finished job, and the chofer's live ETA.
@@ -18,8 +39,14 @@ import { region } from './region.js';
 /**
  * Rates the other party.
  *
- * The rolling average is maintained with increments rather than recomputed, so
- * a chofer with two thousand jobs does not cost two thousand reads to rate.
+ * A customer's rating of the chofer is the one that matters: it carries stars,
+ * tags and a comment, feeds the chofer's summary and dispatch score, and files
+ * a review the office sees. A chofer's rating of the customer is only kept on
+ * the service.
+ *
+ * Everything happens in one transaction. Checking "already rated" and writing
+ * the rating separately let a double tap count twice, and recomputing the
+ * average from a second read let two ratings at once overwrite each other.
  * Re-rating is refused rather than overwritten: silently replacing a rating
  * would let somebody walk one back after a dispute.
  */
@@ -28,63 +55,142 @@ export const rateService = onCall({ region, cors: true }, async (request) => {
     .object({
       serviceId: z.string().min(1).max(64),
       stars: z.number().int().min(1).max(5),
+      tags: z.array(z.string().max(40)).max(ALL_TAGS.length).default([]),
       comment: z.string().max(500).nullish(),
     })
     .safeParse(request.data);
   if (!parsed.success) throw invalidArgument('Elige entre 1 y 5 estrellas.');
 
   const caller = requireAuth(request);
-  const { serviceId, stars, comment } = parsed.data;
+  const { serviceId, stars } = parsed.data;
+  const comment = (parsed.data.comment ?? '').trim();
+  const tags = tagsFor(stars, parsed.data.tags);
 
-  const snap = await Paths.service(serviceId).get();
-  const service = snap.data();
-  if (!service) throw precondition(Code.notFound, 'Este servicio ya no existe.');
+  const review = await db.runTransaction(async (transaction) => {
+    const snap = await transaction.get(Paths.service(serviceId));
+    const service = snap.data();
+    if (!service) throw precondition(Code.notFound, 'Este servicio ya no existe.');
 
-  const isClient = service['clientId'] === caller.uid;
-  const isDriver = service['driverId'] === caller.uid;
-  if (!isClient && !isDriver) {
-    throw precondition(Code.invalidTransition, 'Este servicio no es tuyo.');
-  }
+    const isClient = service['clientId'] === caller.uid;
+    const isDriver = service['driverId'] === caller.uid;
+    if (!isClient && !isDriver) {
+      throw precondition(Code.invalidTransition, 'Este servicio no es tuyo.');
+    }
 
-  // Rating a job that has not finished is rating something that has not
-  // happened yet.
-  const status = service['status'] as ServiceStatus;
-  if (status !== ServiceStatus.completed && status !== ServiceStatus.closed) {
-    throw precondition(
-      Code.invalidTransition,
-      'Puedes calificar cuando termine el servicio.',
-    );
-  }
+    // Rating a job that has not finished is rating something that has not
+    // happened yet.
+    const status = service['status'] as ServiceStatus;
+    if (status !== ServiceStatus.completed && status !== ServiceStatus.closed) {
+      throw precondition(
+        Code.invalidTransition,
+        'Puedes calificar cuando termine el servicio.',
+      );
+    }
 
-  const field = isClient ? 'ratings.clientToDriver' : 'ratings.driverToClient';
-  const ratings = (service['ratings'] ?? {}) as Record<string, unknown>;
-  const existing = ratings[isClient ? 'clientToDriver' : 'driverToClient'];
-  if (existing) {
-    throw precondition(Code.invalidInput, 'Ya calificaste este servicio.');
-  }
+    const timeline = (service['timeline'] ?? {}) as Record<string, unknown>;
+    const finishedAt = (timeline['completedAt'] as FirebaseFirestore.Timestamp | undefined)
+      ?.toDate();
+    if (!withinRatingWindow(finishedAt, new Date())) {
+      throw precondition(
+        Code.invalidTransition,
+        `Solo puedes calificar durante ${RATING_WINDOW_DAYS} días después del servicio.`,
+      );
+    }
 
-  await Paths.service(serviceId).update({
-    [field]: { stars, comment: comment ?? '', ratedAt: FieldValue.serverTimestamp() },
-    updatedAt: FieldValue.serverTimestamp(),
-  });
+    const side = isClient ? 'clientToDriver' : 'driverToClient';
+    const ratings = (service['ratings'] ?? {}) as Record<string, unknown>;
+    if (ratings[side]) {
+      throw precondition(Code.invalidInput, 'Ya calificaste este servicio.');
+    }
 
-  // Only a customer's rating of a chofer feeds the dispatch score.
-  const driverId = service['driverId'] as string | undefined;
-  if (isClient && driverId) {
-    await Paths.driver(driverId).update({
-      ratingCount: FieldValue.increment(1),
-      ratingSum: FieldValue.increment(stars),
+    const driverId = service['driverId'] as string | undefined;
+    const driverSnap =
+      isClient && driverId ? await transaction.get(Paths.driver(driverId)) : undefined;
+
+    // Reads above, writes below: a transaction refuses a read after a write.
+    transaction.update(Paths.service(serviceId), {
+      [`ratings.${side}`]: {
+        stars,
+        comment,
+        ...(isClient ? { tags } : {}),
+        ratedAt: FieldValue.serverTimestamp(),
+      },
       updatedAt: FieldValue.serverTimestamp(),
     });
 
-    // Kept denormalised so dispatch scoring does not have to divide on read.
-    const driverSnap = await Paths.driver(driverId).get();
-    const data = driverSnap.data() ?? {};
-    const count = (data['ratingCount'] as number | undefined) ?? 1;
-    const sum = (data['ratingSum'] as number | undefined) ?? stars;
-    await Paths.driver(driverId).update({ rating: sum / Math.max(1, count) });
+    if (!isClient || !driverId || !driverSnap?.exists) return null;
+
+    const summary = applyRating((driverSnap.data() ?? {}) as Partial<DriverRatingSummary>, {
+      stars,
+      tags,
+      comment,
+    });
+    transaction.update(Paths.driver(driverId), {
+      ...summary,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+
+    const flagged = needsReview(stars, tags);
+    const filed = {
+      serviceId,
+      serviceCode: (service['code'] as string | undefined) ?? '',
+      driverId,
+      driverName: (service['driverName'] as string | undefined) ?? '',
+      clientId: service['clientId'] as string,
+      clientName: (service['clientName'] as string | undefined) ?? '',
+      stars,
+      tags,
+      comment,
+      status: flagged ? ReviewStatus.open : ReviewStatus.ok,
+      ratedAt: FieldValue.serverTimestamp(),
+    };
+    transaction.create(Paths.driverReview(serviceId), filed);
+    return filed;
+  });
+
+  if (review && review.status === ReviewStatus.open) {
+    await alertAdmins(
+      `Calificación de ${review.stars} ★ a ${review.driverName || 'un chofer'}`,
+      review.comment || `Servicio ${review.serviceCode}. Revísala en Evaluaciones.`,
+      { type: 'driver_review', serviceId },
+    );
   }
 
+  return { ok: true };
+});
+
+/**
+ * The office closes a flagged review: it called the customer, spoke to the
+ * chofer, and wrote down what it found. The rating itself is never changed.
+ */
+export const resolveDriverReview = onCall({ region, cors: true }, async (request) => {
+  const parsed = z
+    .object({
+      serviceId: z.string().min(1).max(64),
+      note: z.string().trim().min(3).max(1000),
+    })
+    .safeParse(request.data);
+  if (!parsed.success) throw invalidArgument('Escribe qué se hizo con esta evaluación.');
+
+  const caller = requireStaff(request);
+  const { serviceId, note } = parsed.data;
+
+  await db.runTransaction(async (transaction) => {
+    const snap = await transaction.get(Paths.driverReview(serviceId));
+    const review = snap.data();
+    if (!review) throw precondition(Code.notFound, 'Esa evaluación no existe.');
+    if (review['status'] !== ReviewStatus.open) {
+      throw precondition(Code.invalidTransition, 'Esa evaluación no está pendiente.');
+    }
+    transaction.update(Paths.driverReview(serviceId), {
+      status: ReviewStatus.resolved,
+      resolutionNote: note,
+      resolvedBy: caller.uid,
+      resolvedAt: FieldValue.serverTimestamp(),
+    });
+  });
+
+  await audit(caller.uid, 'driverReview.resolve', serviceId, { note });
   return { ok: true };
 });
 

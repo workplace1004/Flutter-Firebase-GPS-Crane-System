@@ -8,9 +8,9 @@ import 'package:livekit_client/livekit_client.dart' as lk;
 /// call), connect, talk, hang up.
 ///
 /// An interface rather than LiveKit directly because two things cannot open a
-/// real media session — demo mode, which has no LiveKit server, and a widget
-/// test, which has no microphone or camera — and both still need the whole
-/// call flow to run. [SilentVoiceTransport] stands in for them.
+/// real media session — a widget test has no LiveKit server, microphone or
+/// camera — and it still needs the whole call flow to run.
+/// [SilentVoiceTransport] stands in there.
 abstract class VoiceTransport {
   /// Takes the microphone, and the camera when [video], asking for permission
   /// if it has to.
@@ -70,7 +70,7 @@ abstract class VoiceTransport {
 }
 
 /// Makes the media side of a call — a real one by default, a silent one in
-/// demo mode and in tests.
+/// tests.
 final voiceTransportFactoryProvider = Provider<VoiceTransport Function()>(
   (ref) => LiveKitVoiceTransport.new,
 );
@@ -389,7 +389,7 @@ class LiveKitVoiceTransport implements VoiceTransport {
   }
 }
 
-/// A call with no audio or picture, for demo mode and tests.
+/// A call with no audio or picture, for tests.
 ///
 /// Reports the other person as joined as soon as it connects: the ringing and
 /// answering are what the rest of the call flow is waiting on, and those come

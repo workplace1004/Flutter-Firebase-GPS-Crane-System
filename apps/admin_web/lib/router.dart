@@ -7,6 +7,7 @@ import 'features/auth/admin_login_screen.dart';
 import 'features/cash/cash_screen.dart';
 import 'features/clients/clients_screen.dart';
 import 'features/drivers/drivers_screen.dart';
+import 'features/evaluations/evaluations_screen.dart';
 import 'features/insurers/insurers_screen.dart';
 import 'features/invoices/fiscal_settings_screen.dart';
 import 'features/invoices/invoices_screen.dart';
@@ -36,6 +37,7 @@ abstract final class Routes {
   static const licenses = '/verificacion';
   static const trucks = '/gruas';
   static const reports = '/reportes';
+  static const evaluations = '/evaluaciones';
   static const cash = '/efectivo';
   static const settlements = '/cortes';
   static const insurers = '/aseguradoras';
@@ -224,6 +226,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(path: Routes.trucks, builder: (_, _) => const TrucksScreen()),
           GoRoute(path: Routes.reports, builder: (_, _) => const ReportsScreen()),
+          GoRoute(
+            path: Routes.evaluations,
+            builder: (_, _) => const EvaluationsScreen(),
+          ),
           GoRoute(path: Routes.cash, builder: (_, _) => const CashScreen()),
           GoRoute(
             path: Routes.settlements,

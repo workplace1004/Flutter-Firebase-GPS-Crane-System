@@ -16,6 +16,7 @@ import '../../domain/models/chat_prefs.dart';
 import '../../domain/models/chat_request.dart';
 import '../../domain/models/dispatch_models.dart';
 import '../../domain/models/driver.dart';
+import '../../domain/models/driver_review.dart';
 import '../../domain/models/insurer.dart';
 import '../../domain/models/insurer_invoice.dart';
 import '../../domain/models/payments.dart';
@@ -30,9 +31,9 @@ import '../paths.dart';
 
 /// Firestore-backed repositories.
 ///
-/// Every one satisfies the same contract as its demo counterpart, so switching
-/// between them is a provider override and no screen changes. Two habits run
-/// through all of them:
+/// Every one satisfies the same contract as its counterpart in `grua_testing`,
+/// so switching between them is a provider override and no screen changes.
+/// Two habits run through all of them:
 ///
 /// * **Nothing writes a governed field.** There is no method here that sets a
 ///   service's status, a driver's assignment or a quote. Those go through
@@ -399,6 +400,27 @@ class FirebaseDriverRepository implements DriverRepository {
   }
 
   @override
+  Stream<List<DriverReview>> watchReviews({
+    String? driverId,
+    bool openOnly = false,
+    int limit = 50,
+  }) {
+    Query<DriverReview> query = Paths.driverReviews();
+    // Each filter has its composite index with ratedAt in
+    // firestore.indexes.json.
+    if (driverId != null) query = query.where('driverId', isEqualTo: driverId);
+    if (openOnly) {
+      query = query.where('status', isEqualTo: DriverReviewStatus.open.wire);
+    }
+    return query
+        .orderBy('ratedAt', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((snap) => snap.docs.map((d) => d.data()).toList())
+        .guarded('watchReviews');
+  }
+
+  @override
   Future<Result<Driver>> fetchDriver(String uid) => _guard(() async {
         final snap = await Paths.driver(uid).get();
         final driver = snap.data();
@@ -656,6 +678,43 @@ class FirestoreServiceRepository implements ServiceRepository {
       });
 
   @override
+  Future<Result<String>> uploadServicePhoto({
+    required String serviceId,
+    required ServicePhotoStage stage,
+    required Uint8List bytes,
+    required String contentType,
+  }) =>
+      _guard(() async {
+        final ext = switch (contentType) {
+          'image/png' => 'png',
+          'image/webp' => 'webp',
+          'image/heic' => 'heic',
+          _ => 'jpg',
+        };
+        final ref = FirebaseStorage.instance.ref(
+          Paths.servicePhotoPath(
+            serviceId,
+            '${stage.wire}_${DateTime.now().microsecondsSinceEpoch}.$ext',
+          ),
+        );
+        await ref.putData(
+          bytes,
+          SettableMetadata(
+            contentType: contentType,
+            cacheControl: 'private, max-age=604800',
+          ),
+        );
+        // The path, not a download URL: a URL's token would let anyone who
+        // saw the service record open the photo, and only the office may.
+        return ref.fullPath;
+      });
+
+  @override
+  Future<Result<String>> servicePhotoUrl(String path) => _guard(
+        () => FirebaseStorage.instance.ref(path).getDownloadURL(),
+      );
+
+  @override
   Stream<Service?> watchActiveForClient(String clientId) => Paths.services()
       .where('clientId', isEqualTo: clientId)
       .where('status', whereIn: _activeWire)
@@ -803,7 +862,7 @@ class FirestoreServiceRepository implements ServiceRepository {
             .limit(limit);
 
         // The cursor is the previous page's last snapshot. Callers treat it as
-        // opaque, which is what lets the demo implementation use an int.
+        // opaque, which is what lets the test implementation use an int.
         if (cursor is DocumentSnapshot) {
           query = query.startAfterDocument(cursor);
         }

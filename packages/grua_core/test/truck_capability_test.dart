@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:grua_core/grua_core.dart';
+import 'package:grua_testing/grua_testing.dart';
 
 /// Which truck can take which job.
 ///

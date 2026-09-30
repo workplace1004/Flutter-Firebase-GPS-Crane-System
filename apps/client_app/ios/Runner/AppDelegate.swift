@@ -1,6 +1,7 @@
 import Flutter
 import GoogleMaps
 import UIKit
+import UserNotifications
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
@@ -14,6 +15,11 @@ import UIKit
        !key.isEmpty {
       GMSServices.provideAPIKey(key)
     }
+
+    // Lets a notification that arrives with the app open show as a banner, and
+    // hands taps on it to Flutter (firebase_messaging and
+    // flutter_local_notifications both listen through this delegate).
+    UNUserNotificationCenter.current().delegate = self
 
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }

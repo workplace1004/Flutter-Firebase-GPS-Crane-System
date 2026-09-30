@@ -715,6 +715,104 @@ enum CancelledBy {
       _resolve(CancelledBy.values, wire, (v) => v.wire, CancelledBy.unknown);
 }
 
+/// What a customer can say about the chofer beside the stars. Praise goes with
+/// four or five stars, complaints with three or fewer; the server drops a tag
+/// given with the wrong kind of rating.
+///
+/// Mirrored in `functions/src/lib/driverRating.ts`.
+enum DriverRatingTag {
+  @JsonValue('punctual')
+  punctual('punctual', 'Llegó a tiempo', positive: true),
+  @JsonValue('courteous')
+  courteous('courteous', 'Amable', positive: true),
+  @JsonValue('careful')
+  careful('careful', 'Cuidó mi vehículo', positive: true),
+  @JsonValue('professional')
+  professional('professional', 'Profesional', positive: true),
+  @JsonValue('good_truck')
+  goodTruck('good_truck', 'Grúa en buen estado', positive: true),
+  @JsonValue('late')
+  late('late', 'Llegó tarde'),
+  @JsonValue('rude')
+  rude('rude', 'Mal trato', serious: true),
+  @JsonValue('vehicle_damage')
+  vehicleDamage('vehicle_damage', 'Dañó mi vehículo', serious: true),
+  @JsonValue('overcharge')
+  overcharge('overcharge', 'Quiso cobrar de más', serious: true),
+  @JsonValue('unsafe_driving')
+  unsafeDriving('unsafe_driving', 'Manejo peligroso', serious: true),
+  @JsonValue('unknown')
+  unknown('unknown', 'Otro');
+
+  const DriverRatingTag(
+    this.wire,
+    this.label, {
+    this.positive = false,
+    this.serious = false,
+  });
+
+  final String wire;
+  final String label;
+  final bool positive;
+
+  /// Sends the rating to the office whatever the stars.
+  final bool serious;
+
+  /// The tags a customer is offered for [stars].
+  static List<DriverRatingTag> forStars(int stars) => [
+        for (final tag in values)
+          if (tag != unknown && tag.positive == (stars >= 4)) tag,
+      ];
+
+  static DriverRatingTag fromWire(String? wire) => _resolve(
+        DriverRatingTag.values,
+        wire,
+        (v) => v.wire,
+        DriverRatingTag.unknown,
+      );
+}
+
+/// Where a customer's review of a chofer stands with the office.
+enum DriverReviewStatus {
+  /// Nothing to look at.
+  @JsonValue('ok')
+  ok('ok', 'Sin novedad'),
+
+  /// Low stars or a serious complaint, waiting for the office.
+  @JsonValue('open')
+  open('open', 'Por revisar'),
+
+  /// The office looked into it and wrote down what it found.
+  @JsonValue('resolved')
+  resolved('resolved', 'Revisada'),
+  @JsonValue('unknown')
+  unknown('unknown', 'Desconocido');
+
+  const DriverReviewStatus(this.wire, this.label);
+
+  final String wire;
+  final String label;
+
+  static DriverReviewStatus fromWire(String? wire) => _resolve(
+        DriverReviewStatus.values,
+        wire,
+        (v) => v.wire,
+        DriverReviewStatus.unknown,
+      );
+}
+
+/// When the chofer photographed the vehicle: as they loaded it, or as they
+/// handed it over. Only ever part of a file name in the bucket, never a field.
+enum ServicePhotoStage {
+  pickup('pickup', 'Al recoger'),
+  dropoff('dropoff', 'Al entregar');
+
+  const ServicePhotoStage(this.wire, this.label);
+
+  final String wire;
+  final String label;
+}
+
 /// Fixed reasons a chofer may give for dropping a job. Free text is not
 /// accepted because these feed the admin's abuse flags.
 enum DriverCancelReason {

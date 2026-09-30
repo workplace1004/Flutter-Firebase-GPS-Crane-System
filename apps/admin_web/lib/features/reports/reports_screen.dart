@@ -1,19 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+// Riverpod 3 keeps the family types out of the default export surface.
+import 'package:flutter_riverpod/misc.dart'
+    show FutureProviderFamily, StreamProviderFamily;
 import 'package:grua_core/grua_core.dart';
 
+import '../invoices/file_saver.dart';
 import '../shared/page_parts.dart';
 import '../shared/toast.dart';
+import 'services_csv.dart';
 
-/// Operational reporting.
+/// Operational reporting, over the services created in the range picked.
 ///
-/// In production every figure here comes from `reports/daily/{date}`, written
-/// by a scheduled rollup — never from a query over `services`. A dashboard that
-/// scans the raw collection is how a Firestore bill goes from tens of dollars
-/// to thousands, and it gets slower every month the business succeeds.
-///
-/// Until the rollups exist, this computes the same shapes from the in-memory
-/// backend so the layout and the definitions are settled first.
+/// Computed in the panel from `services`, a page at a time and at most
+/// [_maxRows] of them. That is a read per service each time the page opens:
+/// fine at today's volume, and the point to move these figures into a daily
+/// rollup written by a scheduled function once the month runs to thousands.
 class ReportsScreen extends ConsumerStatefulWidget {
   const ReportsScreen({super.key});
 
@@ -32,23 +34,75 @@ enum _Range {
   final int days;
 }
 
+/// The most services one report reads.
+const _maxRows = 2000;
+
+/// The services created in the last `days` local days, newest first. Throws
+/// the repository's failure, which the screen shows.
+final FutureProviderFamily<({List<Service> services, bool truncated}), int>
+_reportServicesProvider = FutureProvider.autoDispose
+    .family<({List<Service> services, bool truncated}), int>((ref, days) async {
+      final repository = ref.watch(serviceRepositoryProvider);
+      final from = DoTime.startOfLocalDay(
+        DateTime.now().toUtc().subtract(Duration(days: days - 1)),
+      );
+
+      final services = <Service>[];
+      Object? cursor;
+      while (services.length < _maxRows) {
+        final page = await repository.fetchServices(
+          from: from,
+          limit: 200,
+          cursor: cursor,
+        );
+        switch (page) {
+          case Ok(:final value):
+            services.addAll(value.items);
+            if (!value.hasMore) return (services: services, truncated: false);
+            cursor = value.cursor;
+          case Err(:final failure):
+            throw failure;
+        }
+      }
+      return (services: services, truncated: true);
+    });
+
+/// One chofer's earnings summary, month to date.
+final StreamProviderFamily<EarningsSummary?, String> _monthSummaryProvider =
+    StreamProvider.autoDispose.family<EarningsSummary?, String>(
+      (ref, driverId) =>
+          ref.watch(earningsRepositoryProvider).watchSummary(driverId),
+    );
+
 class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   _Range _range = _Range.week;
 
+  void _export(List<Service> services) {
+    final now = DateTime.now();
+    final saved = ref
+        .read(fileSaverProvider)
+        .save(
+          servicesCsv(services),
+          fileName: servicesCsvFileName(now),
+          mimeType: csvMimeType,
+        );
+    showToast(
+      context,
+      saved
+          ? 'Se descargó el reporte de ${services.length} servicios.'
+          : 'No se pudo descargar el reporte.',
+      tone: saved ? ToastTone.success : ToastTone.error,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final services = ref.watch(demoBackendProvider).allServices;
+    final report = ref.watch(_reportServicesProvider(_range.days));
     final drivers = ref.watch(allDriversProvider).value ?? const [];
     final text = Theme.of(context).textTheme;
     final palette = context.palette;
-    final now = DateTime.now().toUtc();
 
-    final from = DoTime.startOfLocalDay(
-      now.subtract(Duration(days: _range.days - 1)),
-    );
-    final inRange = services
-        .where((s) => (s.createdAt ?? now).isAfter(from))
-        .toList();
+    final inRange = report.value?.services ?? const <Service>[];
 
     final completed = inRange
         .where(
@@ -130,12 +184,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                           setState(() => _range = s.first),
                     ),
                     OutlinedButton.icon(
-                      onPressed: () => showToast(
-                        context,
-                        'La exportación se genera en una Cloud Function y se '
-                        'entrega como URL firmada.',
-                        tone: ToastTone.info,
-                      ),
+                      key: const Key('reports-export'),
+                      onPressed: inRange.isEmpty
+                          ? null
+                          : () => _export(inRange),
                       style: OutlinedButton.styleFrom(
                         minimumSize: const Size(0, 40),
                       ),
@@ -149,6 +201,27 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           ],
         ),
         const SizedBox(height: Insets.xl),
+        if (report.hasError) ...[
+          InlineNotice(
+            message: switch (report.error) {
+              final Failure failure => failure.userMessage,
+              _ => 'No se pudieron cargar los servicios.',
+            },
+            tone: NoticeTone.error,
+          ),
+          const SizedBox(height: Insets.lg),
+        ] else if (report.isLoading) ...[
+          const LinearProgressIndicator(minHeight: 2),
+          const SizedBox(height: Insets.lg),
+        ] else if (report.value?.truncated ?? false) ...[
+          const InlineNotice(
+            message:
+                'El periodo tiene más de $_maxRows servicios: las cifras '
+                'cuentan solo los $_maxRows más recientes.',
+            tone: NoticeTone.warning,
+          ),
+          const SizedBox(height: Insets.lg),
+        ],
         // Every tile carries a line under its figure, so they are all built
         // the same way and stand the same height: a figure alone next to one
         // with a note read as two sizes of card.
@@ -222,13 +295,17 @@ class _DriverLeaderboard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final backend = ref.watch(demoBackendProvider);
     final text = Theme.of(context).textTheme;
     final palette = context.palette;
 
     final rows =
         drivers
-            .map((d) => (driver: d, summary: backend.earnings(d.id)))
+            .map(
+              (d) => (
+                driver: d,
+                summary: ref.watch(_monthSummaryProvider(d.id)).value,
+              ),
+            )
             .where((r) => r.summary != null && r.summary!.monthServices > 0)
             .toList()
           ..sort(

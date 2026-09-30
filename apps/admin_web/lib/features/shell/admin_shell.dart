@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:grua_core/grua_core.dart';
 
 import '../../router.dart';
+import '../evaluations/evaluation_widgets.dart';
 import '../verification/license_verification_screen.dart';
 import 'theme_toggle.dart';
 
@@ -63,6 +64,11 @@ class _Sidebar extends ConsumerWidget {
     (label: 'Clientes', icon: Icons.people_outline, route: Routes.clients),
     (label: 'Choferes', icon: Icons.badge_outlined, route: Routes.drivers),
     (
+      label: 'Evaluaciones',
+      icon: Icons.star_outline,
+      route: Routes.evaluations,
+    ),
+    (
       label: 'Verificación',
       icon: Icons.verified_user_outlined,
       route: Routes.licenses,
@@ -93,6 +99,8 @@ class _Sidebar extends ConsumerWidget {
     // activated, or handed to a person by the check.
     final licenses =
         licensesNeedingOffice(ref.watch(allDriversProvider).value ?? const []);
+    // Flagged reviews nobody has looked into yet.
+    final reviews = ref.watch(openReviewsProvider).value?.length ?? 0;
 
     return Container(
       width: 232,
@@ -129,7 +137,11 @@ class _Sidebar extends ConsumerWidget {
               label: item.label,
               icon: item.icon,
               selected: _isSelected(item.route),
-              count: item.route == Routes.licenses ? licenses : 0,
+              count: switch (item.route) {
+                Routes.licenses => licenses,
+                Routes.evaluations => reviews,
+                _ => 0,
+              },
               onTap: () => context.go(item.route),
             ),
           const Spacer(),

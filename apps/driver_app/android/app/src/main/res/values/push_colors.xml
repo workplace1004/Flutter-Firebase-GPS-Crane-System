@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Kept apart from colors.xml, which flutter_launcher_icons rewrites. -->
+<resources>
+    <!-- Tints the push notification icon: the brand red. -->
+    <color name="notification_color">#E01F26</color>
+</resources>

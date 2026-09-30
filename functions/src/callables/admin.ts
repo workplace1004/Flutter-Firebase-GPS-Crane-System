@@ -21,6 +21,7 @@ import { Code, invalidArgument, permissionDenied, precondition } from '../lib/er
 import { FieldValue, Paths, db } from '../lib/firestore.js';
 import { requireAdmin, requireAppCheck, requireAuth, requireStaff } from '../lib/guards.js';
 import { notify } from '../lib/push.js';
+import { averageRating, PRIOR_RATING } from '../lib/driverRating.js';
 import { applyTransition } from '../lib/stateMachine.js';
 import { region } from './region.js';
 
@@ -87,11 +88,14 @@ function newDriverDefaults() {
   return {
     status: DriverStatus.inactive,
     isOnline: false,
-    rating: 4.8,
+    rating: PRIOR_RATING,
     ratingCount: 0,
+    ratingSum: 0,
     completedServices: 0,
     offersSent: 0,
     offersAccepted: 0,
+    offersRejected: 0,
+    offersMissed: 0,
     cancellations: 0,
     cashOwedCents: 0,
     archived: false,
@@ -788,7 +792,11 @@ export const assignServiceManually = onCall({ region, cors: true }, async (reque
         // Copied like an automatic accept copies it: without it the customer's
         // tracking card and chat showed a manually assigned chofer as a letter.
         driverPhotoUrl: driver['photoUrl'] ?? '',
-        driverRating: driver['rating'] ?? 0,
+        // What the customer reads: the plain average, 0 before any rating.
+        driverRating: averageRating(
+          (driver['ratingSum'] as number | undefined) ?? 0,
+          (driver['ratingCount'] as number | undefined) ?? 0,
+        ),
         truckId: driver['assignedTruckId'] ?? null,
         truckPlate: driver['assignedTruckPlate'] ?? '',
         assignedAt: FieldValue.serverTimestamp(),

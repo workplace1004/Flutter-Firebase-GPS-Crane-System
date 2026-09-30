@@ -11,7 +11,7 @@ import '../palette.dart';
 class VehiclePhotoStrip extends StatelessWidget {
   const VehiclePhotoStrip({required this.urls, this.size = 64, super.key});
 
-  /// Download URLs, or data URIs in demo mode.
+  /// Download URLs, or data URIs from the test backend.
   final List<String> urls;
   final double size;
 
@@ -45,7 +45,7 @@ class VehiclePhotoStrip extends StatelessWidget {
   }
 }
 
-/// One vehicle photo, from the bucket or, in demo mode, a data URI.
+/// One vehicle photo, from the bucket or, in a test, a data URI.
 class VehiclePhoto extends StatelessWidget {
   const VehiclePhoto({required this.url, this.fit = BoxFit.contain, super.key});
 

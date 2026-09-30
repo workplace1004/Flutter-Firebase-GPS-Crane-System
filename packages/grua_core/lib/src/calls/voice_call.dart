@@ -145,7 +145,7 @@ class CallJoin {
   final String peerName;
   final bool video;
 
-  /// The LiveKit server, `wss://…`. Empty in demo mode, where there is no
+  /// The LiveKit server, `wss://…`. Empty in a test, where there is no
   /// audio to connect to.
   final String url;
   final String token;

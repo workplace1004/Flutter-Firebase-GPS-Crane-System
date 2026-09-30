@@ -138,6 +138,14 @@ class ProfileScreen extends ConsumerWidget {
 
                 OutlinedButton.icon(
                   onPressed: () async {
+                    // Before signing out, while the rules still allow it: the
+                    // next person on this phone must not get these pushes.
+                    final uid = ref.read(currentUserIdProvider);
+                    if (uid != null) {
+                      await ref
+                          .read(pushServiceProvider)
+                          .unregister(uid: uid, audience: PushAudience.client);
+                    }
                     await ref.read(authRepositoryProvider).signOut();
                   },
                   style: OutlinedButton.styleFrom(

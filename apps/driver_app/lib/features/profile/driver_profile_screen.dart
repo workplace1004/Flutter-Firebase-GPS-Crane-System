@@ -98,6 +98,18 @@ class DriverProfileScreen extends ConsumerWidget {
                       ),
                       const Divider(indent: Insets.huge),
                       _Row(
+                        key: const Key('profile-evaluation'),
+                        icon: Icons.star_outline,
+                        label: 'Mi evaluación',
+                        subtitle: switch (DriverScorecard.of(driver)) {
+                          final card when card.hasRatings =>
+                            '★ ${card.averageLabel} · ${card.standing.label}',
+                          _ => 'Lo que dicen tus clientes',
+                        },
+                        onTap: () => context.push(Routes.evaluation),
+                      ),
+                      const Divider(indent: Insets.huge),
+                      _Row(
                         icon: blocker != null && blocker.isBlocking
                             ? Icons.location_off_outlined
                             : Icons.location_on_outlined,
@@ -216,7 +228,9 @@ class _IdentityCard extends StatelessWidget {
                     const SizedBox(width: 2),
                     Flexible(
                       child: Text(
-                        '${driver.rating.toStringAsFixed(1)} · '
+                        // The average customers gave, not the dispatch
+                        // score; "Nuevo" until the first rating.
+                        '${DriverScorecard.of(driver).averageLabel} · '
                         '${driver.completedServices} servicios',
                         overflow: TextOverflow.ellipsis,
                         style: text.bodySmall?.copyWith(
@@ -242,6 +256,7 @@ class _Row extends StatelessWidget {
     this.subtitle = '',
     this.subtitleColor,
     this.onTap,
+    super.key,
   });
 
   final IconData icon;

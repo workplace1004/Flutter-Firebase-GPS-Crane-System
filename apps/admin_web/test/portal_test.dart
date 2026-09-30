@@ -1,10 +1,12 @@
 import 'package:admin_web/app.dart';
+import 'package:admin_web/features/portal/address_field.dart';
 import 'package:admin_web/features/portal/portal_shell.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grua_core/grua_core.dart';
+import 'package:grua_testing/grua_testing.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 /// The insurance company's portal inside the panel: who gets in, what they
@@ -40,6 +42,8 @@ Future<void> main() async {
         overrides: [
           appConfigProvider.overrideWithValue(config),
           ...demoOverrides(backend: backend, role: UserRole.admin, actingAs: 'admin-1'),
+          // No Places key in a test: the order form suggests these instead.
+          knownPlacesProvider.overrideWithValue(_places),
         ],
         child: const AdminApp(),
       ),
@@ -435,3 +439,15 @@ Future<void> main() async {
     await finish(tester, backend);
   });
 }
+
+/// What the order form offers by name in these tests.
+const _places = [
+  ServiceLocation(
+    geo: LatLng(18.4780, -69.9312),
+    address: 'Taller Autocentro, Av. 27 de Febrero, Santo Domingo',
+  ),
+  ServiceLocation(
+    geo: LatLng(18.4735, -69.8844),
+    address: 'Zona Colonial, Santo Domingo',
+  ),
+];

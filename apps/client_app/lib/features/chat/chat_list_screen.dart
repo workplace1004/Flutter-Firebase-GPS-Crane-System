@@ -417,7 +417,7 @@ class _Face extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // A photo says more than a letter, and the shared avatar already handles
-    // a missing one, a broken one, and demo mode's data URIs.
+    // a missing one, a broken one, and the test backend's data URIs.
     if (!waiting && photoUrl.isNotEmpty) {
       return DriverAvatar(name: name, photoUrl: photoUrl, size: 44);
     }

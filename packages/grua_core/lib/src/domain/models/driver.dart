@@ -35,14 +35,33 @@ abstract class Driver with _$Driver {
     /// offer, going offline, and being deactivated.
     String? currentServiceId,
     @Default(false) bool isOnline,
+    /// The score dispatch ranks on: the average smoothed toward 4.8, so one
+    /// rating does not decide a new chofer's place. Not for display — see
+    /// [averageRating].
     @Default(4.8) double rating,
     @Default(0) int ratingCount,
+    @Default(0) int ratingSum,
+
+    /// Ratings per star, keyed `'1'`…`'5'`.
+    @Default(<String, int>{}) Map<String, int> ratingStars,
+
+    /// How often customers gave each [DriverRatingTag], by wire.
+    @Default(<String, int>{}) Map<String, int> ratingTags,
+
+    /// The latest reviews, newest first, with nothing that names the service
+    /// or the customer: what the chofer reads about themselves.
+    @Default(<DriverFeedback>[]) List<DriverFeedback> recentFeedback,
     @Default(0) int completedServices,
 
-    /// Rolling 30-day dispatch behaviour, used in the admin panel and
-    /// eventually as a scoring input.
+    /// How the chofer answers offers, counted by dispatch.
     @Default(0) int offersSent,
     @Default(0) int offersAccepted,
+    @Default(0) int offersRejected,
+
+    /// Offers that ran out with no answer.
+    @Default(0) int offersMissed,
+
+    /// Jobs the chofer dropped after accepting.
     @Default(0) int cancellations,
 
     /// Cash the chofer has collected but not yet handed in. When this passes
@@ -98,12 +117,25 @@ abstract class Driver with _$Driver {
               ? DriverPresence.connected
               : DriverPresence.offline;
 
+  /// What customers gave on average, 0 before the first rating.
+  double get averageRating => ratingCount == 0 ? 0 : ratingSum / ratingCount;
+
+  /// Offers the chofer was sent and either answered or let run out.
+  int get offersReceived {
+    final answered = offersAccepted + offersRejected + offersMissed;
+    return offersSent > answered ? offersSent : answered;
+  }
+
   /// Share of offers this chofer actually took. Low numbers mean either a
   /// notification problem or a chofer cherry-picking; both need looking at.
+  ///
+  /// Counted over accepted, rejected and missed offers: dispatch never kept
+  /// `offersSent`, so dividing by it alone showed everyone at 100%.
   double get acceptanceRate =>
-      offersSent == 0 ? 1 : offersAccepted / offersSent;
+      offersReceived == 0 ? 1 : offersAccepted / offersReceived;
 
-  String get acceptanceLabel => '${(acceptanceRate * 100).round()}%';
+  String get acceptanceLabel =>
+      offersReceived == 0 ? '—' : '${(acceptanceRate * 100).round()}%';
 
   String get shortName {
     final parts = name.trim().split(RegExp(r'\s+'));
@@ -117,6 +149,28 @@ abstract class Driver with _$Driver {
     if (digits.length != 11) return cedula;
     return '${digits.substring(0, 3)}-${digits.substring(3, 10)}-${digits.substring(10)}';
   }
+}
+
+/// One review as the chofer reads it: no service, no customer, no date.
+@freezed
+abstract class DriverFeedback with _$DriverFeedback {
+  const factory DriverFeedback({
+    @Default(0) int stars,
+    @Default(<String>[]) List<String> tags,
+    @Default('') String comment,
+  }) = _DriverFeedback;
+
+  const DriverFeedback._();
+
+  factory DriverFeedback.fromJson(Map<String, dynamic> json) =>
+      _$DriverFeedbackFromJson(json);
+
+  List<DriverRatingTag> get ratingTags => [
+        for (final wire in tags)
+          if (DriverRatingTag.fromWire(wire) case final tag
+              when tag != DriverRatingTag.unknown)
+            tag,
+      ];
 }
 
 /// `drivers/{uid}.licenseVerification`, written by `verifyDriverLicense` and

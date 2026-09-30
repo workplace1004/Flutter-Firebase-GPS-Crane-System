@@ -42,7 +42,7 @@ export {
 } from './callables/chatRequests.js';
 export { answerCall, endCall, startCall } from './callables/calls.js';
 export { ensureProfile } from './callables/profile.js';
-export { rateService, publishEta } from './callables/feedback.js';
+export { rateService, resolveDriverReview, publishEta } from './callables/feedback.js';
 export {
   setOnline,
   acceptService,

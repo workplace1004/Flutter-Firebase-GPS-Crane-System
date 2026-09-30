@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grua_core/grua_core.dart';
 
+import '../rating/rate_driver.dart';
+
 /// One past service: the route, the timeline from the event log, the price
 /// breakdown, and the invoice.
 class ServiceDetailScreen extends ConsumerWidget {
@@ -106,6 +108,12 @@ class ServiceDetailScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: Insets.lg),
+
+                if (canRateDriver(service, DateTime.now().toUtc()) ||
+                    (service.ratings.clientToDriver?.isRated ?? false)) ...[
+                  RateDriverCard(service: service),
+                  const SizedBox(height: Insets.lg),
+                ],
 
                 FloatingCard(
                   child: Column(

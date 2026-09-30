@@ -481,6 +481,10 @@ abstract class ServiceRating with _$ServiceRating {
   const factory ServiceRating({
     @Default(0) int stars,
     @Default('') String comment,
+
+    /// [DriverRatingTag] wires, on a customer's rating of the chofer. Kept as
+    /// strings so a tag this app does not know yet still reads.
+    @Default(<String>[]) List<String> tags,
     @NullableTimestampConverter() DateTime? ratedAt,
   }) = _ServiceRating;
 
@@ -490,6 +494,13 @@ abstract class ServiceRating with _$ServiceRating {
       _$ServiceRatingFromJson(json);
 
   bool get isRated => stars > 0;
+
+  List<DriverRatingTag> get ratingTags => [
+        for (final wire in tags)
+          if (DriverRatingTag.fromWire(wire) case final tag
+              when tag != DriverRatingTag.unknown)
+            tag,
+      ];
 }
 
 @freezed

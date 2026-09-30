@@ -7,6 +7,7 @@ import '../domain/models/billing.dart';
 import '../domain/models/chat_request.dart';
 import '../domain/models/dispatch_models.dart';
 import '../domain/models/driver.dart';
+import '../domain/models/driver_review.dart';
 import '../domain/models/insurer.dart';
 import '../domain/models/insurer_invoice.dart';
 import '../domain/models/payments.dart';
@@ -33,6 +34,7 @@ abstract final class Paths {
 
   static const String usersCollection = 'users';
   static const String driversCollection = 'drivers';
+  static const String driverReviewsCollection = 'driverReviews';
   static const String trucksCollection = 'trucks';
   static const String servicesCollection = 'services';
   static const String trackingCollection = 'tracking';
@@ -125,6 +127,15 @@ abstract final class Paths {
           );
 
   static DocumentReference<Driver> driver(String uid) => drivers().doc(uid);
+
+  /// Customers' reviews of choferes, one per rated service. Staff only.
+  static CollectionReference<DriverReview> driverReviews() =>
+      _db.collection(driverReviewsCollection).withConverter<DriverReview>(
+            fromFirestore: (snap, _) =>
+                DriverReview.fromJson({...?snap.data(), 'serviceId': snap.id}),
+            // Server-written: the app never writes a review.
+            toFirestore: (value, _) => throw UnsupportedError('read-only'),
+          );
 
   static CollectionReference<DriverDocument> driverDocuments(String uid) => _db
       .collection(driversCollection)

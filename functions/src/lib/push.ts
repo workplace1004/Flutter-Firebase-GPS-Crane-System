@@ -114,7 +114,13 @@ export async function sendOffer(options: {
 
   const message: MulticastMessage = {
     tokens,
-    data: { type: 'offer', serviceId: options.serviceId, ...options.payload },
+    data: {
+      type: 'offer',
+      serviceId: options.serviceId,
+      // So the notification the app draws goes away when the offer does.
+      ttlSeconds: `${options.ttlSeconds}`,
+      ...options.payload,
+    },
     android: {
       priority: 'high',
       ttl: ttlMs,

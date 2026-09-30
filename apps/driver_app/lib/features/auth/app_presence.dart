@@ -132,6 +132,11 @@ Future<void> signOutDriver(WidgetRef ref) async {
     // Refused mid-tow, and rightly: signing out does not end the job.
     await ref.read(functionsGatewayProvider).setOnline(online: false);
     await ref.read(driverRepositoryProvider).clearAppPresence(uid);
+    // While the session still exists: the rules refuse it afterwards, and the
+    // next chofer on this phone would get this one's offers.
+    await ref
+        .read(pushServiceProvider)
+        .unregister(uid: uid, audience: PushAudience.driver);
   }
   await ref.read(authRepositoryProvider).signOut();
 }

@@ -6,10 +6,8 @@ import 'firebase_options.dart';
 /// Entry point for the customer app.
 ///
 /// All initialization lives in `runGruaApp` so the three products cannot drift
-/// in startup order, error capture or locale setup. Supplying
-/// [DefaultFirebaseOptions] is the whole switch between Firestore and the
-/// in-memory demo backend; if initialization fails, the app falls back rather
-/// than showing a crash screen.
+/// in startup order, error capture or locale setup. If Firebase cannot be
+/// reached, the app says so on an error screen rather than crashing.
 void main() => runGruaApp(
       appKind: AppKind.client,
       builder: ClientApp.new,

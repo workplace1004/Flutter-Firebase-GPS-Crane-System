@@ -97,7 +97,7 @@ class DriverBalance {
 ///
 /// A port of `functions/src/lib/settlements.ts`; both run the cases in
 /// `test/fixtures/settlement_cases.json`. The server writes the real corte —
-/// this one draws what the next corte will say, and runs the demo backend.
+/// this one draws what the next corte will say, and runs the test backend.
 ///
 ///     balance = (what Titan owes for insurer jobs) − (commission owed on cash jobs)
 abstract final class SettlementMath {

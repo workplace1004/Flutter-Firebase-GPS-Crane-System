@@ -303,13 +303,22 @@ class FirebaseFunctionsGateway implements FunctionsGateway {
   Future<Result<void>> rateService({
     required String serviceId,
     required int stars,
+    List<DriverRatingTag> tags = const [],
     String? comment,
   }) =>
       _callVoid('rateService', {
         'serviceId': serviceId,
         'stars': stars,
+        'tags': [for (final tag in tags) tag.wire],
         'comment': ?comment,
       });
+
+  @override
+  Future<Result<void>> resolveDriverReview({
+    required String serviceId,
+    required String note,
+  }) =>
+      _callVoid('resolveDriverReview', {'serviceId': serviceId, 'note': note});
 
   // -------------------------------------------------------------------------
   // Driver

@@ -69,6 +69,7 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>
+		<string>remote-notification</string>
 	</array>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Usamos el micrófono para que puedas hablar con el chofer de tu grúa.</string>

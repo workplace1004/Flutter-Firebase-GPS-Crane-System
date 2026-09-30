@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:grua_core/grua_core.dart';
+import 'package:grua_testing/grua_testing.dart';
 
 /// The demo backend's fleet operations must refuse and clean up the way
 /// `callables/trucks.ts` does, or the panel is built against a server that does

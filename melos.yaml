@@ -48,10 +48,6 @@ scripts:
     description: Start the Firebase emulator suite.
     run: firebase emulators:start --import=.emulator-data --export-on-exit
 
-  seed:
-    description: Seed the running emulator suite with demo data.
-    run: npm --prefix functions run seed
-
   # --flavor is deliberately absent. Gradle product flavors land with the
   # Firebase projects, since their only job is to point each build at a
   # different one; until then a flavor argument would just fail the build.

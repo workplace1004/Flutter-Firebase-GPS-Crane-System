@@ -11,9 +11,10 @@ company module (Fase 2): [docs/fase2_despliegue.md](docs/fase2_despliegue.md).
 
 ## Running it
 
-Everything runs today against an **in-memory demo backend** that implements the
-real state machine and the real pricing. No Firebase project, no API keys, no
-account. You can walk the whole flow — request, dispatch, tow, cash — offline.
+The apps always run against Firebase: the project in `firebase_options.dart`,
+or the local emulator suite. There is no offline or demo mode. A build that
+cannot reach Firebase stops on a "No pudimos conectar con el servidor" screen
+rather than running against anything else.
 
 ```bash
 flutter pub get          # once, from the repo root
@@ -22,10 +23,13 @@ flutter pub get          # once, from the repo root
 Then pick an app:
 
 ```bash
-cd apps/client_app && flutter run -d chrome    # customer
-cd apps/driver_app && flutter run -d chrome --web-port 50166   # chofer
-cd apps/admin_web  && flutter run -d chrome --web-port 5000    # operations panel
+cd apps/client_app && flutter run -d chrome --dart-define-from-file=../../config/dev.json   # customer
+cd apps/driver_app && flutter run -d chrome --web-port 50166 --dart-define-from-file=../../config/dev.json   # chofer
+cd apps/admin_web  && flutter run -d chrome --web-port 5000 --dart-define-from-file=../../config/dev.json    # operations panel
 ```
+
+Add `--dart-define=USE_EMULATORS=true` to use the emulator suite instead of the
+dev project (see "Or skip the cloud and use the emulator" below).
 
 Or from the repo root, via Melos:
 
@@ -52,22 +56,17 @@ day dispatcher can each have their own on the same account. Both skins come
 from one set of tokens (`BrandPalette` in `grua_core`), which is why a screen
 never has to be written twice. The phone apps stay light-only.
 
-### What you'll see
+### Accounts
 
-| App | Signs in as | Try this |
-|---|---|---|
-| **client_app** | Any RD phone number, then **any 6 digits** as the code | Pedir grúa → pick the two points on the map → confirm the price. A chofer is assigned after ~6 s and the truck moves across the map. |
-| **driver_app** | `driver1@gruasrd.do` (or any email), any password ≥ 4 chars | Requests arrive on their own: an insurer tow, then a cash tow. Walk Llegué → Iniciar → Finalizar (→ Cobrar). Mis cortes shows last week's corte. |
-| **admin_web** | Any email, any password ≥ 4 chars | The live map, the queue with `needs_manual` pinned to the top, the driver roster and the fleet. |
-| **admin_web** as an insurance company | `marta@segurosdemo.do` (manager) or `restrepo@segurosdemo.do` (operator) | The insurer portal: order a tow at the zone price, live map, history, invoices. |
+Nothing is pre-loaded. The first office admin is granted as described under
+"Granting the first admin" below; from the panel that admin creates the
+trucks, the choferes and the insurance companies with their users. Customers
+sign up in the client app with their phone number. For phone sign-in during
+development, register test numbers under Authentication → Phone → "Phone
+numbers for testing" and run a debug build with
+`--dart-define=DISABLE_APP_VERIFICATION=true`.
 
-The demo backend accepts anything that looks valid because it enforces nothing —
-authorisation, concurrency and money are the server's job. It exists so the UI
-can be built and reviewed before the backend is deployed, and so widget tests
-run without a network. Never point it at a real customer.
-
-The demo apps need `--dart-define=USE_DEMO_BACKEND=true` now that the repo has
-Firebase options. Full Phase 2 test guide: [docs/fase2_pruebas.md](docs/fase2_pruebas.md).
+Full Phase 2 test guide: [docs/fase2_pruebas.md](docs/fase2_pruebas.md).
 
 ---
 
@@ -93,8 +92,8 @@ The Firestore, Realtime Database and Storage rules, the indexes, the emulator
 config and the real repository implementations are all written. What is missing
 is a project, which needs your Google account.
 
-The apps fall back to the demo backend when Firebase is not configured, so
-nothing breaks while you work through this.
+Until it is done the apps open on the "No pudimos conectar con el servidor"
+screen.
 
 ### 1. Install the CLIs
 
@@ -144,8 +143,7 @@ void main() => runGruaApp(
     );
 ```
 
-That one argument is the whole switch. With it the apps use Firestore; without
-it they use the demo backend, and neither the screens nor the tests change.
+The apps cannot start without it.
 
 ### 4. Enable the services
 
@@ -287,6 +285,7 @@ rather than quietly talking to the wrong project.
 
 ```
 packages/grua_core/   models, state machine, pricing, repositories, brand, maps
+packages/grua_testing/  in-memory backend for the tests (dev dependency only)
 apps/client_app/      customer  — Android, iOS, web
 apps/driver_app/      chofer    — Android, iOS, web
 apps/admin_web/       operations panel — web
@@ -302,12 +301,7 @@ formula, money formatting, the brand — lives there so it cannot drift.
 
 ## Not built yet
 
-- **Cloud Functions**: the dispatch cascade, the transition guards, payments.
-  The demo backend stands in for these and implements the same rules.
-- **Firestore security rules** and the emulator suite.
-- **Places Autocomplete**: the picker resolves an address from the pin rather
-  than searching for one.
-- **Routes API**: distance is a straight line × 1.35 in the demo. The real call
-  belongs server-side in `quoteService`, so it lands with the functions.
+- **Card payments**: cash and insurer billing only. The payment states exist;
+  no Dominican processor (Azul, CardNet) is connected.
 - **Gradle product flavors**: they only exist to point builds at different
   Firebase projects, so they land with the projects.

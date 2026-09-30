@@ -7,6 +7,7 @@ import 'package:grua_core/grua_core.dart';
 
 import '../../router.dart';
 import '../payment/payment_choice_card.dart';
+import '../rating/rate_driver.dart';
 
 /// What the customer watches while they wait on the shoulder.
 ///
@@ -434,7 +435,10 @@ class _DriverCard extends StatelessWidget {
                       const Icon(Icons.star, size: 15, color: BrandColors.warning),
                       const SizedBox(width: 2),
                       Text(
-                        service.driverRating.toStringAsFixed(1),
+                        // A chofer nobody has rated yet is new, not 0.0.
+                        service.driverRating > 0
+                            ? service.driverRating.toStringAsFixed(1)
+                            : 'Nuevo',
                         style: text.labelMedium,
                       ),
                     ],
@@ -745,6 +749,12 @@ class _TerminalBody extends StatelessWidget {
               tone: completed ? EmptyStateTone.success : EmptyStateTone.neutral,
             ),
           ),
+          // The moment the tow ends is when the customer remembers it best.
+          if (completed)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: Insets.gutter),
+              child: RateDriverCard(service: service),
+            ),
           Padding(
             padding: const EdgeInsets.all(Insets.gutter),
             child: Column(

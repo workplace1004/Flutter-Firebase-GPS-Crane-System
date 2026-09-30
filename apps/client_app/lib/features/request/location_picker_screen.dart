@@ -363,7 +363,7 @@ class _LocationPickerScreenState extends ConsumerState<LocationPickerScreen> {
                     left: Insets.lg,
                     right: Insets.lg,
                     child: InlineNotice(
-                      message: 'Mapa de demostración: arrastra para elegir el '
+                      message: 'Mapa esquemático: arrastra para elegir el '
                           'punto. Con la llave de Google Maps configurada verás '
                           'el mapa real.',
                       icon: Icons.map_outlined,

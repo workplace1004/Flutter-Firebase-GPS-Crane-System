@@ -1470,8 +1470,8 @@ class _Composer extends StatelessWidget {
 /// A photo in a bubble, opening full-screen on a tap.
 ///
 /// Two sources, as everywhere else that shows an uploaded image: a real
-/// download URL in production, and a data URI in demo mode, which has no
-/// bucket to upload to.
+/// download URL in production, and a data URI from the in-memory test
+/// backend, which has no bucket to upload to.
 class _ChatImage extends StatelessWidget {
   const _ChatImage({required this.url});
 
@@ -1550,11 +1550,11 @@ const _brokenImage = Padding(
   child: Icon(Icons.broken_image_outlined, color: BrandColors.grey400),
 );
 
-/// Renders a chat photo from a download URL or a demo data URI.
+/// Renders a chat photo from a download URL or a test backend's data URI.
 Widget chatImage(String url, {BoxFit fit = BoxFit.cover}) {
   Widget broken(BuildContext _, Object _, StackTrace? _) => _brokenImage;
 
-  // Demo mode has no bucket, so its photos travel as data URIs.
+  // The test backend has no bucket, so its photos travel as data URIs.
   if (url.startsWith('data:')) {
     final bytes = Uri.tryParse(url)?.data?.contentAsBytes();
     if (bytes == null) return _brokenImage;

@@ -57,6 +57,7 @@ export const Collections = {
   insurerInvoices: 'insurerInvoices',
   fiscal: 'fiscal',
   ncfRegistry: 'ncfRegistry',
+  driverReviews: 'driverReviews',
 } as const;
 
 export const Sub = {
@@ -80,6 +81,10 @@ export const Paths = {
 
   drivers: () => db.collection(Collections.drivers),
   driver: (uid: string) => db.collection(Collections.drivers).doc(uid),
+  driverReviews: () => db.collection(Collections.driverReviews),
+  /** One per rated service, keyed by the service: a service is rated once. */
+  driverReview: (serviceId: string) =>
+    db.collection(Collections.driverReviews).doc(serviceId),
   driverTokens: (uid: string) =>
     db.collection(Collections.drivers).doc(uid).collection(Sub.tokens),
   driverDocuments: (uid: string) =>

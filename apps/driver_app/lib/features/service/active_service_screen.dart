@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../router.dart';
 import '../notifications/notification_widgets.dart';
+import 'proof_photos_sheet.dart';
 
 /// The job in progress.
 ///
@@ -30,6 +31,11 @@ class ActiveServiceScreen extends ConsumerStatefulWidget {
 class _ActiveServiceScreenState extends ConsumerState<ActiveServiceScreen> {
   var _busy = false;
 
+  /// Photos already uploaded for a transition the server then refused — "Estás
+  /// a 2.3 km del destino" — kept so trying again does not mean shooting the
+  /// whole vehicle a second time.
+  final _proof = <(String, ServicePhotoStage), List<String>>{};
+
   Future<void> _run(Future<Result<void>> Function() action) async {
     if (_busy) return;
     setState(() => _busy = true);
@@ -48,7 +54,7 @@ class _ActiveServiceScreenState extends ConsumerState<ActiveServiceScreen> {
   }
 
   /// The chofer's own position: the phone's GPS first, then the last position
-  /// the server mirrored (which is all the demo has), then the pickup itself
+  /// the server mirrored, then the pickup itself
   /// so the range guards still have something to judge.
   LatLng _currentPosition(Service service) {
     final mine = ref.read(myPositionProvider).value?.position;
@@ -67,12 +73,14 @@ class _ActiveServiceScreenState extends ConsumerState<ActiveServiceScreen> {
               position: _currentPosition(service),
             ));
       case ServiceStatus.arrived:
+        final photos = await _proofPhotos(service, ServicePhotoStage.pickup);
+        if (photos == null || !mounted) return;
         await _run(() => gateway.startService(
               serviceId: service.id,
-              photoPaths: const ['demo-pickup-1', 'demo-pickup-2'],
+              photoPaths: photos,
             ));
       case ServiceStatus.inProgress:
-        await _confirmFinish(service);
+        await _finish(service);
       // An insurer's tow closes by itself: there is nothing to collect.
       case ServiceStatus.completed when !service.isInsurerJob:
         await _collectCash(service);
@@ -81,32 +89,34 @@ class _ActiveServiceScreenState extends ConsumerState<ActiveServiceScreen> {
     }
   }
 
-  Future<void> _confirmFinish(Service service) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('¿Finalizar el servicio?'),
-        content: const Text(
-          'Confirma que ya entregaste el vehículo en el destino.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Todavía no'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Sí, finalizar'),
-          ),
-        ],
-      ),
+  /// The photos for [stage]: the ones a refused attempt already uploaded, or
+  /// fresh ones from the camera. Null when the chofer backs out.
+  Future<List<String>?> _proofPhotos(
+    Service service,
+    ServicePhotoStage stage,
+  ) async {
+    final kept = _proof[(service.id, stage)];
+    if (kept != null) return kept;
+    final taken = await captureProofPhotos(
+      context,
+      serviceId: service.id,
+      stage: stage,
     );
-    if (confirmed != true || !mounted) return;
+    if (taken != null) _proof[(service.id, stage)] = taken;
+    return taken;
+  }
+
+  /// "Finalizar": the drop-off photos double as the confirmation that the
+  /// vehicle is at the destination — nobody photographs a handover that has
+  /// not happened.
+  Future<void> _finish(Service service) async {
+    final photos = await _proofPhotos(service, ServicePhotoStage.dropoff);
+    if (photos == null || !mounted) return;
 
     await _run(() => ref.read(functionsGatewayProvider).completeService(
           serviceId: service.id,
           position: _currentPosition(service),
-          photoPaths: const ['demo-dropoff-1'],
+          photoPaths: photos,
         ));
   }
 

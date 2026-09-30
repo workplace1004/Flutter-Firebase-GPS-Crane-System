@@ -167,7 +167,7 @@ class MapCircle {
 /// uses. Positions are therefore correct relative to one another, which is what
 /// the screens are actually demonstrating.
 ///
-/// It is a development and demo affordance. `GoogleMap` replaces it as soon as
+/// It is a development affordance. `GoogleMap` replaces it as soon as
 /// `GOOGLE_MAPS_API_KEY` is configured.
 class SchematicMap extends StatelessWidget {
   const SchematicMap({
@@ -271,7 +271,7 @@ class SchematicMap extends StatelessWidget {
                     vertical: 3,
                   ),
                   child: Text(
-                    'Mapa de demostración',
+                    'Mapa esquemático',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: isDark
                               ? const Color(0xFFB4AFAE)

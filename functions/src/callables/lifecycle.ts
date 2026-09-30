@@ -31,6 +31,7 @@ import { applyTransition } from '../lib/stateMachine.js';
 import { acceptOffer, rejectOffer } from '../dispatch/offers.js';
 import { dispatchNext } from '../dispatch/dispatchNext.js';
 import { loadDispatchConfig } from '../dispatch/dispatchNext.js';
+import { isProofPhotoPath, MAX_PROOF_PHOTOS } from '../lib/servicePhoto.js';
 import { region } from './region.js';
 
 /**
@@ -244,6 +245,18 @@ export const markArrived = onCall({ region, cors: true }, async (request) => {
 });
 
 /**
+ * The chofer's photos of the vehicle, at pickup and at drop-off: at least one,
+ * because they are the only record of its condition when it changed hands.
+ */
+const proofPhotos = z.array(z.string().max(400)).min(1).max(MAX_PROOF_PHOTOS);
+
+function assertProofPhotos(serviceId: string, paths: string[]): void {
+  if (!paths.every((path) => isProofPhotoPath(serviceId, path))) {
+    throw invalidArgument('Las fotos no corresponden a este servicio.');
+  }
+}
+
+/**
  * "Iniciar servicio" — the vehicle is loaded.
  *
  * Photos are required because this is the moment the vehicle's condition stops
@@ -253,12 +266,13 @@ export const markArrived = onCall({ region, cors: true }, async (request) => {
  */
 export const startService = onCall({ region, cors: true }, async (request) => {
   const parsed = serviceOnly
-    .extend({ photoPaths: z.array(z.string().max(400)).max(6).default([]) })
+    .extend({ photoPaths: proofPhotos })
     .safeParse(request.data);
   if (!parsed.success) throw invalidArgument('Datos inválidos.');
 
   const { uid } = await requireActiveDriver(request);
   const { serviceId, photoPaths } = parsed.data;
+  assertProofPhotos(serviceId, photoPaths);
 
   const service = await loadService(serviceId);
   assertAssigned(service, uid);
@@ -297,7 +311,7 @@ export const startService = onCall({ region, cors: true }, async (request) => {
 export const completeService = onCall({ region, cors: true }, async (request) => {
   const parsed = withPosition
     .extend({
-      photoPaths: z.array(z.string().max(400)).max(6).default([]),
+      photoPaths: proofPhotos,
       notes: z.string().max(500).nullish(),
     })
     .safeParse(request.data);
@@ -305,6 +319,7 @@ export const completeService = onCall({ region, cors: true }, async (request) =>
 
   const { uid } = await requireActiveDriver(request);
   const { serviceId, position, photoPaths, notes } = parsed.data;
+  assertProofPhotos(serviceId, photoPaths);
 
   const service = await loadService(serviceId);
   assertAssigned(service, uid);

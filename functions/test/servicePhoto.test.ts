@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  isProofPhotoPath,
   isVehiclePhotoUrl,
   needsServiceDriverPhoto,
   vehiclePhotoUrls,
@@ -71,5 +72,27 @@ describe('needsServiceDriverPhoto', () => {
   it('does not rewrite finished tows', () => {
     expect(needsServiceDriverPhoto({ status: 'closed', driverId: 'driver-1' })).toBe(false);
     expect(needsServiceDriverPhoto({ status: 'cancelled', driverId: 'driver-1' })).toBe(false);
+  });
+});
+
+/**
+ * The chofer's photos at pickup and drop-off, filed on the service as the
+ * record of the vehicle's condition.
+ */
+describe('proof photos', () => {
+  it("accepts a file in the service's own folder", () => {
+    expect(isProofPhotoPath('s1', 'service_photos/s1/pickup_1727700000000.jpg')).toBe(true);
+  });
+
+  it("refuses another service's folder, a sub-folder and a way out", () => {
+    expect(isProofPhotoPath('s1', 'service_photos/s2/pickup_1.jpg')).toBe(false);
+    expect(isProofPhotoPath('s1', 'service_photos/s1/x/pickup_1.jpg')).toBe(false);
+    expect(isProofPhotoPath('s1', 'service_photos/s1/../s2/pickup_1.jpg')).toBe(false);
+    expect(isProofPhotoPath('s1', 'service_photos/s1/')).toBe(false);
+  });
+
+  it('refuses the placeholder names the app used to send', () => {
+    expect(isProofPhotoPath('s1', 'demo-pickup-1')).toBe(false);
+    expect(isProofPhotoPath('s1', BUCKET_URL)).toBe(false);
   });
 });

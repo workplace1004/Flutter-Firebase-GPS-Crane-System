@@ -102,7 +102,7 @@ class DriverAvatar extends StatelessWidget {
     }
     if (photoUrl.isEmpty) return initials;
 
-    // Demo mode has no bucket, so its photos travel as data URIs.
+    // The test backend has no bucket, so its photos travel as data URIs.
     if (photoUrl.startsWith('data:')) {
       final decoded = Uri.tryParse(photoUrl)?.data?.contentAsBytes();
       if (decoded == null) return initials;

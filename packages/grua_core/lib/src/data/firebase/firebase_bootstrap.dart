@@ -4,21 +4,23 @@ import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 
 import '../../config/app_config.dart';
 import '../../providers.dart';
+import '../../push/firebase_push_service.dart';
+import '../../push/push_service.dart';
 import 'firebase_repositories.dart';
 import 'functions_gateway.dart';
 
 /// Brings Firebase up and binds the real repositories.
 ///
-/// Kept separate from `runGruaApp` so a build with no Firebase configuration
-/// still runs: `initializeFirebase` reports whether it succeeded, and the
-/// caller falls back to the in-memory backend rather than showing a crash to
-/// somebody who just cloned the repo.
+/// Kept separate from `runGruaApp` so a failure to connect is reported rather
+/// than thrown: [initialize] says whether it succeeded, and the caller shows
+/// an error screen instead of a crash.
 abstract final class FirebaseBootstrap {
   /// True once [initialize] has connected successfully.
   static bool get isReady => _ready;
@@ -31,9 +33,8 @@ abstract final class FirebaseBootstrap {
   /// Initializes Firebase and, in a dev build, points the SDKs at the local
   /// emulator suite.
   ///
-  /// Returns false rather than throwing when there is no configuration. A
-  /// missing `firebase_options.dart` is the normal state of a fresh clone, not
-  /// an error worth a crash screen.
+  /// Returns false rather than throwing when Firebase cannot be brought up,
+  /// and keeps the reason in [initializationError].
   static Future<bool> initialize({
     required AppConfig config,
     FirebaseOptions? options,
@@ -46,14 +47,19 @@ abstract final class FirebaseBootstrap {
       _error = error;
       debugPrint(
         'Firebase could not be initialized ($error). '
-        'A build with firebase_options.dart stops here; one without it runs '
-        'against the in-memory demo backend. '
         'Run `flutterfire configure` to connect a project.',
       );
       return false;
     }
 
     await _activateAppCheck(config);
+
+    // Registered before anything else runs, so a push that wakes a closed app
+    // finds its handler. Phones only: the panel and the web builds have no
+    // background isolate to wake.
+    if (_hasPush) {
+      FirebaseMessaging.onBackgroundMessage(gruaPushBackgroundHandler);
+    }
 
     if (config.useEmulators) await _useEmulators(config);
 
@@ -204,12 +210,19 @@ abstract final class FirebaseBootstrap {
 
   /// Binds every repository to Firebase.
   ///
-  /// The shape mirrors `demoOverrides` exactly, which is the point: the two are
-  /// interchangeable, and no screen can tell which one it is running against.
+  /// The shape mirrors `demoOverrides` in `grua_testing` exactly, which is the
+  /// point: a widget test swaps one for the other and no screen can tell.
+  /// Android and iOS builds, the only ones that receive push here.
+  static bool get _hasPush =>
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS);
+
   static List<Override> overrides(AppConfig config) {
     final gateway = FirebaseFunctionsGateway(region: config.functionsRegion);
 
     return [
+      if (_hasPush) pushServiceProvider.overrideWithValue(FirebasePushService()),
       authRepositoryProvider.overrideWithValue(FirebaseAuthRepository()),
       userRepositoryProvider
           .overrideWithValue(const FirestoreUserRepository()),

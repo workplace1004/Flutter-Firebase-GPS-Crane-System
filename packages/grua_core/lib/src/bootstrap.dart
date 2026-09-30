@@ -10,9 +10,7 @@ import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:intl/date_symbol_data_local.dart';
 
 import 'config/app_config.dart';
-import 'data/demo/demo_backend.dart';
 import 'data/firebase/firebase_bootstrap.dart';
-import 'domain/enums.dart';
 import 'providers.dart';
 import 'theme/brand.dart';
 
@@ -23,24 +21,14 @@ import 'theme/brand.dart';
 /// misconfigured locale while the driver app is fine is a bug nobody finds
 /// until a Sunday.
 ///
-/// The data layer is chosen at startup, in this order:
-///
-/// 1. [backendOverrides], when a caller passes one — tests and demos do.
-/// 2. The in-memory demo backend, with `--dart-define=USE_DEMO_BACKEND=true`.
-/// 3. Firebase, when [firebaseOptions] is supplied.
-/// 4. The in-memory demo backend, when there are no [firebaseOptions] at all.
-///
-/// A fresh clone has no `firebase_options.dart`, and somebody evaluating the
-/// repo should see the product rather than a crash screen naming a CLI they
-/// have not heard of. A build that does ship one is a different case: it means
-/// to talk to a project, and the demo backend lets anybody in with any
-/// password, so failing to reach Firebase stops on an error screen instead.
+/// The data layer is Firebase, always. A build that cannot reach it — no
+/// `firebase_options.dart`, or initialization failing — stops on an error
+/// screen rather than running against anything else: there is no offline
+/// stand-in that could let somebody in without a real account.
 Future<void> runGruaApp({
   required AppKind appKind,
   required Widget Function() builder,
-  UserRole demoRole = UserRole.client,
-  List<Override> Function()? backendOverrides,
-  FirebaseOptions? firebaseOptions,
+  required FirebaseOptions firebaseOptions,
   /// Anything an app wires on top of the shared providers, such as the
   /// panel's browser-backed theme-mode store.
   List<Override> appOverrides = const [],
@@ -85,19 +73,11 @@ Future<void> runGruaApp({
         ),
       );
 
-      // The demo backend signs anyone in who types four characters as a
-      // password, so it is only ever reached on purpose: a test harness, the
-      // USE_DEMO_BACKEND define, or a clone with no firebase_options.dart to
-      // pass. A build that ships one and cannot reach Firebase says so below
-      // rather than turning into an app with no password check.
-      final wantsDemo = backendOverrides != null || config.useDemoBackend;
-      final usingFirebase = !wantsDemo &&
-          await FirebaseBootstrap.initialize(
-            config: config,
-            options: firebaseOptions,
-          );
-
-      if (!wantsDemo && !usingFirebase && firebaseOptions != null) {
+      final usingFirebase = await FirebaseBootstrap.initialize(
+        config: config,
+        options: firebaseOptions,
+      );
+      if (!usingFirebase) {
         runApp(
           _BackendUnavailableApp(
             error: FirebaseBootstrap.initializationError,
@@ -110,14 +90,7 @@ Future<void> runGruaApp({
       final overrides = <Override>[
         appConfigProvider.overrideWithValue(config),
         ...appOverrides,
-        if (backendOverrides != null)
-          ...backendOverrides()
-        else if (usingFirebase)
-          ...FirebaseBootstrap.overrides(config)
-        else
-          // The demo app also gets an insurer's month to invoice, and the
-          // driver app requests that arrive on their own.
-          ...demoOverrides(role: demoRole, backend: _demoAppBackend(demoRole)),
+        ...FirebaseBootstrap.overrides(config),
       ];
 
       runApp(ProviderScope(overrides: overrides, child: builder()));
@@ -126,19 +99,10 @@ Future<void> runGruaApp({
   );
 }
 
-DemoBackend _demoAppBackend(UserRole role) {
-  final backend = DemoBackend()
-    ..seed()
-    ..seedInsurerHistory();
-  if (role == UserRole.driver) backend.startRequestSimulator();
-  return backend;
-}
-
 /// What a build configured for Firebase shows when it cannot reach it.
 ///
-/// The alternative — the in-memory backend — would accept any email with any
-/// password and then report that the account has no chofer, which reads as two
-/// unrelated bugs instead of one connection that never came up.
+/// Says plainly that the connection never came up, rather than letting every
+/// screen after it fail in its own way.
 class _BackendUnavailableApp extends StatelessWidget {
   const _BackendUnavailableApp({required this.error, required this.flavor});
 

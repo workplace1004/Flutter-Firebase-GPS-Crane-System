@@ -31,6 +31,24 @@ export function isVehiclePhotoUrl(value: string): boolean {
   );
 }
 
+/** How many proof photos one transition may carry — the chofer's sheet allows six. */
+export const MAX_PROOF_PHOTOS = 6;
+
+/**
+ * Whether [path] is one of the chofer's proof photos for this service: a file
+ * directly under `service_photos/{serviceId}/`, where storage.rules lets only
+ * the assigned chofer write.
+ *
+ * Without it a chofer could file another job's photos — or any string — as the
+ * record of this vehicle's condition.
+ */
+export function isProofPhotoPath(serviceId: string, path: string): boolean {
+  const prefix = `service_photos/${serviceId}/`;
+  if (!path.startsWith(prefix)) return false;
+  const name = path.slice(prefix.length);
+  return /^[A-Za-z0-9_.-]+$/.test(name) && !name.includes('..');
+}
+
 /**
  * The vehicle photos to copy onto an offer: only well-formed ones, at most
  * [MAX_VEHICLE_PHOTOS].

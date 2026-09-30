@@ -190,7 +190,7 @@ class InvoiceDraft {
 
 /// The monthly invoice's arithmetic. A port of
 /// `functions/src/lib/insurerInvoice.ts`; the server writes the real invoice,
-/// this one runs the demo backend and previews what the next will say.
+/// this one runs the test backend and previews what the next will say.
 abstract final class InsurerInvoiceMath {
   static const maxLines = 400;
 

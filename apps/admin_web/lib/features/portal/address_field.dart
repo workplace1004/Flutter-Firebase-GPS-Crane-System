@@ -6,36 +6,12 @@ import 'package:grua_core/grua_core.dart';
 
 import '../shared/toast.dart';
 
-/// Places an insurer's operators name often, offered when the Places API is
-/// not configured — a fresh checkout, the demo, a test. With a key, Google's
-/// suggestions replace them.
-const List<ServiceLocation> frequentPlaces = [
-  ServiceLocation(
-    geo: DoLocations.santoDomingo,
-    address: 'Av. 27 de Febrero, Santo Domingo',
-  ),
-  ServiceLocation(
-    geo: LatLng(18.4780, -69.9312),
-    address: 'Taller Autocentro, Av. 27 de Febrero, Santo Domingo',
-  ),
-  ServiceLocation(
-    geo: LatLng(18.4735, -69.8844),
-    address: 'Zona Colonial, Santo Domingo',
-  ),
-  ServiceLocation(
-    geo: LatLng(18.4834, -69.9396),
-    address: 'Ágora Mall, Av. Abraham Lincoln, Santo Domingo',
-  ),
-  ServiceLocation(
-    geo: LatLng(18.4297, -69.6689),
-    address: 'Aeropuerto Internacional Las Américas',
-  ),
-  ServiceLocation(geo: DoLocations.santiago, address: 'Centro, Santiago de los Caballeros'),
-  ServiceLocation(geo: DoLocations.sanPedro, address: 'San Pedro de Macorís'),
-  ServiceLocation(geo: DoLocations.laRomana, address: 'La Romana'),
-  ServiceLocation(geo: DoLocations.puntaCana, address: 'Punta Cana'),
-  ServiceLocation(geo: DoLocations.puertoPlata, address: 'Puerto Plata'),
-];
+/// Places suggested by name when the Places API is not configured.
+///
+/// Empty in the product: without Google's suggestions the operator points at
+/// the place on the map, rather than choosing from a list somebody typed in.
+/// A test hands the form its own places here.
+final knownPlacesProvider = Provider<List<ServiceLocation>>((ref) => const []);
 
 /// Lowercase and without accents, so "agora" finds "Ágora".
 String _fold(String s) {
@@ -118,7 +94,7 @@ class _AddressFieldState extends ConsumerState<AddressField> {
     if (!places.isAvailable) {
       final folded = _fold(text);
       final matches = [
-        for (final place in frequentPlaces)
+        for (final place in ref.read(knownPlacesProvider))
           if (_fold(place.address).contains(folded))
             (
               title: place.address,

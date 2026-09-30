@@ -18,8 +18,6 @@ export 'src/chat/service_chat_screen.dart';
 export 'src/config/app_config.dart';
 // Data layer
 export 'src/data/converters.dart';
-export 'src/data/demo/demo_backend.dart';
-export 'src/data/demo/demo_repositories.dart';
 export 'src/data/firebase/firebase_bootstrap.dart';
 export 'src/data/firebase/firebase_repositories.dart';
 export 'src/data/firebase/functions_gateway.dart';
@@ -32,6 +30,7 @@ export 'src/data/settlements.dart';
 export 'src/data/xlsx.dart';
 export 'src/data/zone_pricing.dart';
 // Domain layer
+export 'src/domain/driver_scorecard.dart';
 export 'src/domain/enums.dart';
 export 'src/domain/failures.dart';
 export 'src/domain/models/app_user.dart';
@@ -40,6 +39,7 @@ export 'src/domain/models/chat_prefs.dart';
 export 'src/domain/models/chat_request.dart';
 export 'src/domain/models/dispatch_models.dart';
 export 'src/domain/models/driver.dart';
+export 'src/domain/models/driver_review.dart';
 export 'src/domain/models/insurer.dart';
 export 'src/domain/models/insurer_invoice.dart';
 export 'src/domain/models/insurer_service.dart';
@@ -62,6 +62,8 @@ export 'src/location/route_service.dart';
 export 'src/media/photo_picker.dart';
 // Dependency wiring
 export 'src/providers.dart';
+export 'src/push/firebase_push_service.dart';
+export 'src/push/push_service.dart';
 // Design system
 export 'src/theme/app_theme.dart';
 export 'src/theme/brand.dart';

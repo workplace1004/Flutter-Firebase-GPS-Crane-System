@@ -1,7 +1,7 @@
 # Phase 2 — How to test it
 
-Which apps changed, and how to test each one: automated tests, by hand in demo
-mode, and end to end on Firebase.
+Which apps changed, and how to test each one: automated tests, by hand against
+the emulator or the dev project, and end to end on Firebase.
 
 ## What changed where
 
@@ -17,10 +17,10 @@ mode, and end to end on Firebase.
 From the repo root, once: `flutter pub get`.
 
 ```bash
-cd packages/grua_core && flutter analyze && flutter test   # 401 tests
-cd apps/admin_web     && flutter analyze && flutter test   # 78 tests
-cd apps/driver_app    && flutter analyze && flutter test   # 36 tests
-cd apps/client_app    && flutter analyze && flutter test   # 41 tests
+cd packages/grua_core && flutter analyze && flutter test
+cd apps/admin_web     && flutter analyze && flutter test
+cd apps/driver_app    && flutter analyze && flutter test
+cd apps/client_app    && flutter analyze && flutter test
 ```
 
 Backend (needs Java 21 for the emulators):
@@ -30,36 +30,44 @@ cd functions
 npm install
 npx tsc --noEmit -p .
 npm run lint
-npm run test:emulator        # 481 tests
+npm run test:emulator
 ```
 
 Every command should end with "No issues found" / "All tests passed".
+
+The widget tests run against the in-memory backend in `packages/grua_testing`.
+It is a dev dependency only: no app can be built with it.
 
 Excel samples from the tests: after `flutter test` in `packages/grua_core`,
 open `packages/grua_core/build/xlsx_samples/factura.xlsx` and `facturas.xlsx`
 in Excel or Google Sheets.
 
-## 2. By hand, in demo mode
+## 2. By hand, against the emulator or the dev project
 
-Demo mode needs no Firebase. **Each app runs its own data in memory:** what you
-do in one app does not appear in another. That is why each app below has its
-own story. Any password with 4 or more characters works.
+The apps always talk to Firebase. For a clean, throw-away run use the emulator
+suite (needs Java 21):
 
-Always start with `--dart-define=USE_DEMO_BACKEND=true`; without it the app
-connects to the real Firebase project.
+```bash
+firebase emulators:start
+# then, in each app:
+flutter run -d chrome --dart-define-from-file=../../config/dev.json --dart-define=USE_EMULATORS=true
+```
+
+Or leave out `USE_EMULATORS` to use the dev project. Either way the three apps
+share one backend, so what you do in one shows up in the others.
+
+**Before you start**, you need the office admin (see "Granting the first admin"
+in the README) and, for the chofer checks, one chofer account with a truck,
+created from the panel in **Choferes** and **Grúas**. Nothing is pre-loaded:
+every company, user and tow below is one you create.
 
 ### 2.1 Admin panel — office
 
-```bash
-cd apps/admin_web
-flutter run -d chrome --web-port 5000 --dart-define=USE_DEMO_BACKEND=true
-```
-
-Use a browser window at least 1024 px wide. Sign in with `ops@gruasrd.do`
-(any non-insurer email signs in as office admin).
+Run the panel on port 5000. Use a browser window at least 1024 px wide and
+sign in with the office admin account.
 
 **A. Aseguradoras**
-1. Sidebar → **Aseguradoras**. "Seguros Demo, S.A." is listed with "Chofer 70%".
+1. Sidebar → **Aseguradoras**. Empty on a fresh project.
 2. **Nueva aseguradora**. The form is in three blocks — Empresa, Contacto
    (folded behind **Agregar contacto**, since it is optional) and Pago al
    chofer:
@@ -73,7 +81,8 @@ Use a browser window at least 1024 px wide. Sign in with `ops@gruasrd.do`
    - **Datos**: edit a field and save; **Suspender** with a reason → status
      changes; **Reactivar**.
    - **Usuarios** → **Agregar usuario** (name, email, role) → a temporary
-     password is shown once.
+     password is shown once. Add one **manager** and one **operator** and
+     keep both passwords: section 2.2 signs in as them.
    - **Tarifa**: says it uses the base tariff. Change zone 1 price to `2000`,
      **Guardar tarifa** → "Precio negociado". Set a zone limit that leaves a
      gap (e.g. zone 2 "hasta" `5`) → error, nothing saved. **Usar la tarifa
@@ -85,10 +94,13 @@ Use a browser window at least 1024 px wide. Sign in with `ops@gruasrd.do`
    you type.
 
 **B. Facturación and NCF**
+Needs at least one finished tow of the company you created: order one in the
+portal (2.2) and complete it in the chofer app (2.3) first.
+
 1. Sidebar → **Facturación**. You should see:
    - the "Modo prueba" notice;
    - "Próximo NCF: B0100000001";
-   - Seguros Demo under **Por facturar**.
+   - your company under **Por facturar**.
 2. **Generar facturas** (last month, all companies) → **Emitir facturas** →
    message "Se emitió 1 factura con NCF de prueba (B0100000001)…".
 3. The row shows the **NCF DE PRUEBA** badge and "Por cobrar". Open it:
@@ -126,8 +138,8 @@ Use a browser window at least 1024 px wide. Sign in with `ops@gruasrd.do`
 
 **D. Cortes (weekly settlement)**
 
-Sidebar → **Cortes** → **Generar cortes ahora**. The seeded choferes'
-unsettled jobs become cortes. Open one:
+Sidebar → **Cortes** → **Generar cortes ahora**. Each chofer's unsettled
+jobs become a corte. Open one:
 - the three sections (insurer jobs, cash commissions, final balance), like
   the Carlos example;
 - **Registrar transferencia al chofer** (or **Registrar pago del chofer** when
@@ -154,25 +166,23 @@ failure. It leaves on its own, and a new one replaces the last.
 
 **G. Office service detail**
 
-**Servicios** → open any job. The dialog has:
+**Servicios** → open any finished job. The dialog has:
 - a header with the code (and a button that copies it), the status and when it
   came in;
 - four tiles: total, forma de pago, distancia y tiempo, chofer asignado;
 - the record in two columns — who and what on the left, money and time on the
   right — with **Tiempos** drawn as a timeline and the total in bold;
-- on one of Seguros Demo's tows, an **Aseguradora** card (company, claim,
-  policy, zone) and "Asegurado" instead of "Cliente".
+- on an insurer's tow, an **Aseguradora** card (company, claim, policy,
+  zone) and "Asegurado" instead of "Cliente";
+- **Fotos del chofer**: the photos taken at pickup and at drop-off. Click
+  one to see it full size.
 
 ### 2.2 Admin panel — insurer portal
 
-Same run. Sidebar → **Cerrar sesión**, then sign in as:
+Same run, another browser or an incognito window. Sign in as the manager and
+the operator you added in 2.1.A.3. The first sign-in asks for a new password.
 
-| Email | Role |
-|---|---|
-| `marta@segurosdemo.do` | Company manager (sees Facturas and Usuarios) |
-| `restrepo@segurosdemo.do` | Operator |
-
-**As the operator (`restrepo@…`)**
+**As the operator**
 1. You land on **Inicio**: company name at the top, month numbers (servicios,
    costo con ITBIS, tiempo promedio), "En curso", "Últimos servicios".
    The sidebar has no office pages, no Facturas and no Usuarios.
@@ -182,9 +192,9 @@ Same run. Sidebar → **Cerrar sesión**, then sign in as:
    - Press **Crear servicio** with the form empty → "Escribe el número de
      siniestro" and "Elige el punto de recogida y el destino".
    - Claim `SIN-2024-001489`, insured name, phone `809-555-0123`, plate.
-   - Pickup: type `zona colonial` and pick the suggestion. Destination: type
-     `autocentro` and pick it. (Without a Google key the demo offers ~10
-     frequent places; the map button lets you pick any point.)
+   - Pickup and destination: type an address and pick Google's suggestion,
+     or use the map button to point at the place. (Without a Places key
+     there are no suggestions: point at it on the map.)
    - Price panel: "0–10 km · Vehículo ligero", RD$2,500 + ITBIS RD$450 =
      RD$2,950. Change the type to **Jeepeta** → RD$3,200.
    - **Crear servicio** → you land on the tow's detail page.
@@ -201,92 +211,72 @@ Same run. Sidebar → **Cerrar sesión**, then sign in as:
    a short one → "Usa al menos 8 caracteres"; a good one
    (`Titan2026seguro`) → "Contraseña actualizada".
 
-**As the manager (`marta@…`)**
+**As the manager**
 1. The sidebar also has **Facturas** and **Usuarios**.
-2. **Usuarios**: Restrepo has a role menu and an on/off switch; your own row
-   says "Tú" with no controls. Deactivate Restrepo, sign out, sign in as
-   Restrepo → "Sin acceso al portal … desactivado".
-3. **Facturas**: empty until the office issues one. In this same run, sign in
-   as `ops@gruasrd.do`, generate an invoice, sign back in as Marta → the
-   invoice is listed with "Por pagar"; open it → print and Excel work, and
-   there are no pay/void buttons.
+2. **Usuarios**: the operator has a role menu and an on/off switch; your own
+   row says "Tú" with no controls. Deactivate the operator, then sign in as
+   them → "Sin acceso al portal … desactivado". Reactivate them.
+3. **Facturas**: empty until the office issues one. Generate an invoice as the
+   office, then look again as the manager → the invoice is listed with "Por
+   pagar"; open it → print and Excel work, and there are no pay/void
+   buttons.
 
-**Suspended company:** as the office, suspend Seguros Demo with a reason, then
-sign in as Restrepo → "Sin acceso al portal" with that reason and a sign-out
-button.
+**Suspended company:** as the office, suspend the company with a reason, then
+sign in as the operator → "Sin acceso al portal" with that reason and a
+sign-out button. Reactivate it.
 
 ### 2.3 Driver app
 
-```bash
-cd apps/driver_app
-flutter run -d chrome --web-port 50166 --dart-define=USE_DEMO_BACKEND=true
-```
+Run it on a phone, or in Chrome on port 50166, and sign in with the chofer
+account. The app puts you online by itself; there is no switch. Nothing
+arrives until somebody orders a tow near you.
 
-Sign in with `driver1@gruasrd.do` (or `driver2@…`, `driver3@…`) and any
-password with 4+ characters. When Chrome asks for your location, choose
-**Block**. Otherwise the app uses your real location, which is far from the
-demo pickups, and "LLEGUÉ" says "Estás a … km".
-
-In the driver demo, requests arrive on their own while you are online and
-free: an **insurance company's tow first**, then a **customer's cash tow**,
-alternating, about every 15–20 seconds.
-
-**A. Balance and last week's settlement**
-1. Home: a chip under the header says **"Titan te debe RD$6,250"**. Tap it.
-2. **Mis cortes**:
-   - **Mi balance**: "Titan te debe RD$6,250", "Cortes pendientes de pago (1)
-     +RD$6,250", "Esta semana hasta ahora RD$0", "Próximo pago".
-   - Below it, last Friday's corte. Open it:
-     - insurer jobs RD$2,450 + RD$3,850 + RD$1,750 = RD$8,050;
-     - cash commissions RD$800 + RD$1,000 = RD$1,800;
-     - final balance in the driver's favour RD$6,250.
-
-**B. An insurance company's tow**
-1. Go back to home. There is no online switch: the app puts you online by
-   itself.
-2. Within ~20 s a job starts (claim `SIN-DEMO-001`). Check:
-   - the insurer banner: "Seguros Demo, S.A.", "Siniestro SIN-DEMO-001", the
-     insured's name, a **call the insured** button, and no chat or call
-     buttons for a customer;
-   - "Ganancia por este servicio" with the driver's share (70% of the zone
-     price, e.g. RD$1,750 for a RD$2,500 tow);
+**A. An insurance company's tow**
+1. As the portal operator, order a tow with its pickup near the chofer.
+2. The offer shows "Ganancia por este servicio · Aseguradora". Accept it.
+3. On the job screen check:
+   - the insurer banner: company name, "Siniestro …", the insured's name, a
+     **call the insured** button, and no chat or call buttons for a customer;
+   - "Ganancia por este servicio" with the chofer's share of the zone price;
    - the notice that the insurer pays: do not charge the customer.
-3. Wait ~20 s until the truck reaches the pickup on the map, then **LLEGUÉ**.
-   If it says "Estás a … km", wait a few seconds more.
-4. **INICIAR SERVICIO** → **FINALIZAR SERVICIO** → confirm.
-5. The job closes by itself, with no cash step. Back on home, the chip and
-   **Mis ganancias → Mi balance** show the new amount under "Esta semana
-   hasta ahora" (+RD$1,750).
+4. At the pickup, **LLEGUÉ**. From far away it says "Estás a … km".
+5. **INICIAR SERVICIO** opens **Fotos antes de cargar**. The button stays off
+   until you take at least one photo; the photos come from the camera only
+   (up to 6), and a photo can be removed before sending. **Todavía no**
+   leaves the job as it was.
+6. At the destination, **FINALIZAR SERVICIO** opens **Fotos al entregar**, the
+   same way. If the server refuses because you are not at the destination,
+   pressing FINALIZAR again sends the same photos without asking for new ones.
+7. The job closes by itself, with no cash step. **Mis ganancias → Mi
+   balance** shows the share under "Esta semana hasta ahora".
 
-**C. A customer's cash tow (for comparison)**
-1. The next request is a cash job: the screen shows the cash total, not an
-   insurer banner.
-2. LLEGUÉ → INICIAR → FINALIZAR → **COBRADO EN EFECTIVO RD$…** → confirm.
-3. In **Mi balance**, "Esta semana hasta ahora" goes down by the 20%
-   commission of that job.
+**B. A customer's cash tow (for comparison)**
+1. Request a tow from the client app (2.4) near the chofer.
+2. The job screen shows the cash total, not an insurer banner.
+3. LLEGUÉ → INICIAR (photos) → FINALIZAR (photos) → **COBRADO EN EFECTIVO
+   RD$…** → confirm.
+4. In **Mi balance**, "Esta semana hasta ahora" goes down by that job's
+   commission.
 
-**D. Other checks**
+**C. Other checks**
 - **Perfil → Cerrar sesión**: you go offline and no new requests arrive.
-- **Mis ganancias** → **Ver mis cortes** opens the same Mis cortes screen.
+- **Mis ganancias** → **Ver mis cortes** opens the Mis cortes screen; after the
+  office generates cortes (2.1.D), the corte is listed there.
 - On a narrow phone size (Chrome dev tools, 360 px wide) the balance chip and
   the cards fit without overflow.
 
 ### 2.4 Client app (quick check only)
 
-```bash
-cd apps/client_app
-flutter run -d chrome --dart-define=USE_DEMO_BACKEND=true
-```
-
-Sign in with any Dominican phone number and any 6-digit code. Request a tow,
-check the price, let a truck be assigned, cancel it, and open your history.
-Everything should work as in v1. Nothing in this app changed for Phase 2.
+Sign in with a number registered under Authentication → Phone → "Phone
+numbers for testing" and its fixed code (a debug build run with
+`--dart-define=DISABLE_APP_VERIFICATION=true`). Request a tow, check the
+price, let a truck be assigned, cancel it, and open your history. Everything
+should work as in v1. Nothing in this app changed for Phase 2.
 
 ## 3. End to end on Firebase (after deploying)
 
-Demo mode cannot show one app's action in another. For that, deploy (see
-[fase2_despliegue.md](fase2_despliegue.md)) and run the apps against the real
-project without the demo flag:
+Once deployed (see [fase2_despliegue.md](fase2_despliegue.md)), repeat the
+flow against the real project:
 
 ```bash
 flutter run -d chrome --dart-define-from-file=../../config/dev.json

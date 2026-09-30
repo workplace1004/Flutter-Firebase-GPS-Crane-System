@@ -9,6 +9,7 @@ import 'models/chat_prefs.dart';
 import 'models/chat_request.dart';
 import 'models/dispatch_models.dart';
 import 'models/driver.dart';
+import 'models/driver_review.dart';
 import 'models/insurer.dart';
 import 'models/insurer_invoice.dart';
 import 'models/insurer_service.dart';
@@ -143,6 +144,16 @@ abstract interface class DriverRepository {
   /// Ids of the choferes with the app open right now. Staff only.
   Stream<Set<String>> watchConnectedDriverIds();
 
+  /// Customers' reviews of choferes, newest first. Staff only.
+  ///
+  /// [driverId] narrows to one chofer's; [openOnly] to the ones waiting for
+  /// the office.
+  Stream<List<DriverReview>> watchReviews({
+    String? driverId,
+    bool openOnly = false,
+    int limit = 50,
+  });
+
   /// Uploads one piece of paperwork to Storage and returns the object path.
   ///
   /// Bytes rather than a file handle because the panel is a web build, where a
@@ -228,13 +239,27 @@ abstract interface class ServiceRepository {
   /// `requests/{clientId}/` and returns the URL that travels on the request.
   ///
   /// Uploaded before the service exists — the photos are part of asking — so
-  /// they are filed under the customer rather than the service. Demo mode has
-  /// no bucket and hands back a data URI.
+  /// they are filed under the customer rather than the service.
   Future<Result<String>> uploadVehiclePhoto({
     required String clientId,
     required Uint8List bytes,
     required String contentType,
   });
+
+  /// Puts one of the chofer's proof photos in the bucket under
+  /// `service_photos/{serviceId}/` and returns its storage path — the path,
+  /// not a URL, because only the office may read these, and
+  /// `startService` / `completeService` refuse a path outside that folder.
+  Future<Result<String>> uploadServicePhoto({
+    required String serviceId,
+    required ServicePhotoStage stage,
+    required Uint8List bytes,
+    required String contentType,
+  });
+
+  /// A URL the office can show for a proof photo [path]. Staff only: the
+  /// bucket refuses anyone else.
+  Future<Result<String>> servicePhotoUrl(String path);
 
   /// Every service, newest first, for the office's Servicios page. Staff only:
   /// the rules refuse the query to anyone else.
@@ -291,7 +316,7 @@ abstract interface class ChatRepository {
   });
 
   /// Puts a photo in the bucket under `chat/{serviceId}/` and returns the URL
-  /// to send. Demo mode has no bucket and hands back a data URI.
+  /// to send.
   Future<Result<String>> uploadImage({
     required String serviceId,
     required Uint8List bytes,
@@ -1030,10 +1055,20 @@ abstract interface class FunctionsGateway {
     required DriverCancelReason reason,
   });
 
+  /// Rates the other side of a finished service. The customer's rating of
+  /// the chofer carries [tags]; the server keeps only those that fit the
+  /// stars.
   Future<Result<void>> rateService({
     required String serviceId,
     required int stars,
+    List<DriverRatingTag> tags = const [],
     String? comment,
+  });
+
+  /// Closes a review the office has looked into. Staff only.
+  Future<Result<void>> resolveDriverReview({
+    required String serviceId,
+    required String note,
   });
 
   /// A short-lived signed URL for an invoice PDF.

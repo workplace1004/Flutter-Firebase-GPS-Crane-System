@@ -21,6 +21,17 @@
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="${MAPS_API_KEY}"/>
+        <!-- Push: what a notification the system draws on its own uses when
+             the server does not say (the app creates these channels). -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="service_updates"/>
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_notification"/>
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/notification_color"/>
         <activity
             android:name=".MainActivity"
             android:exported="true"

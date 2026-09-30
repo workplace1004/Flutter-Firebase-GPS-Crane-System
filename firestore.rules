@@ -506,6 +506,13 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // A customer's review of a chofer, with who wrote it: the office's only.
+    // The chofer reads the anonymous copy kept on their own driver record.
+    match /driverReviews/{serviceId} {
+      allow read: if isStaff();
+      allow write: if false;
+    }
+
     // ---------------------------------------------------------------------
     // Everything not named above is denied.
     //

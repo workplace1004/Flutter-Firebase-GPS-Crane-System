@@ -78,6 +78,8 @@ class ServiceDetailDialog extends ConsumerWidget {
           ('Grúa requerida', s.truckTypeRequired.label),
         ],
       ),
+      if (s.pickupPhotoPaths.isNotEmpty || s.dropoffPhotoPaths.isNotEmpty)
+        _ProofPhotosCard(service: s),
       _Card(
         title: 'Chofer',
         icon: Icons.badge_outlined,
@@ -542,6 +544,67 @@ class _Card extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// The chofer's photos of the vehicle as it was loaded and as it was handed
+/// over: what the office opens when a customer says the grúa made the dent.
+class _ProofPhotosCard extends StatelessWidget {
+  const _ProofPhotosCard({required this.service});
+
+  final Service service;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final palette = context.palette;
+
+    return _Panel(
+      child: Column(
+        key: const Key('proof-photos'),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _CardTitle(
+            title: 'Fotos del chofer',
+            icon: Icons.photo_camera_outlined,
+          ),
+          for (final (stage, paths) in [
+            (ServicePhotoStage.pickup, service.pickupPhotoPaths),
+            (ServicePhotoStage.dropoff, service.dropoffPhotoPaths),
+          ])
+            if (paths.isNotEmpty) ...[
+              const SizedBox(height: Insets.md),
+              Text(
+                stage.label,
+                style: text.bodySmall?.copyWith(color: palette.textMuted),
+              ),
+              const SizedBox(height: Insets.xs),
+              _ProofPhotoStrip(key: Key('proof-${stage.wire}'), paths: paths),
+            ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Resolves each stored path to a URL and draws the ones that resolved.
+class _ProofPhotoStrip extends ConsumerWidget {
+  const _ProofPhotoStrip({required this.paths, super.key});
+
+  final List<String> paths;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final urls = [
+      for (final path in paths) ?ref.watch(servicePhotoUrlProvider(path)).value,
+    ];
+    if (urls.isEmpty) {
+      return Text(
+        'Cargando ${paths.length} ${paths.length == 1 ? 'foto' : 'fotos'}…',
+        style: Theme.of(context).textTheme.bodySmall,
+      );
+    }
+    return VehiclePhotoStrip(urls: urls, size: 72);
   }
 }
 

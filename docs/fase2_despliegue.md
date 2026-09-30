@@ -127,9 +127,8 @@ aceptes sin revisar la lista: la Fase 2 no elimina ninguna.
 
 ### 4. Panel web
 
-La carpeta `apps/admin_web/build/web` puede tener una compilación de prueba
-con el backend de demostración. **Vuelve a compilar antes de publicar**, sin
-`USE_DEMO_BACKEND`:
+**Vuelve a compilar antes de publicar**: la carpeta `apps/admin_web/build/web`
+puede tener una compilación vieja.
 
 ```bash
 cd apps/admin_web
@@ -139,8 +138,7 @@ firebase deploy --only hosting
 ```
 
 Abre el panel publicado y confirma que el inicio de sesión pide una cuenta real
-(con el demo, cualquier contraseña de 4 letras entra: eso es una compilación
-equivocada).
+y rechaza una contraseña equivocada.
 
 ### 5. App del chofer
 

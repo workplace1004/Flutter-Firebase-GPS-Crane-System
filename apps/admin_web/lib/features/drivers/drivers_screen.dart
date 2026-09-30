@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:grua_core/grua_core.dart';
 
+import '../evaluations/evaluation_widgets.dart';
 import '../shared/toast.dart';
 import '../verification/license_verification_screen.dart';
 import 'create_driver_dialog.dart';
@@ -367,6 +368,7 @@ class _DriverTable extends StatelessWidget {
               DataColumn(label: Text('CÉDULA')),
               DataColumn(label: Text('GRÚA')),
               DataColumn(label: Text('ESTADO')),
+              DataColumn(label: Text('CALIFICACIÓN')),
               DataColumn(label: Text('ACEPTA'), numeric: true),
               DataColumn(label: Text('SERVICIOS'), numeric: true),
               DataColumn(label: Text('EFECTIVO'), numeric: true),
@@ -427,25 +429,8 @@ class _DriverTable extends StatelessWidget {
                     // Presence is the avatar's dot, with its label on hover.
                     // A chofer who registered from the app also shows where
                     // the licence check stands, until they are working.
-                    DataCell(
-                      driver.licenseVerification == null ||
-                              driver.status == DriverStatus.active
-                          ? _StatusPill(status: driver.status)
-                          : Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                _StatusPill(status: driver.status),
-                                const SizedBox(height: Insets.xxs),
-                                Tooltip(
-                                  message: 'Licencia',
-                                  child: LicenseStatePill(
-                                    state: driver.licenseVerification!.state,
-                                  ),
-                                ),
-                              ],
-                            ),
-                    ),
+                    DataCell(_StatusCell(driver: driver)),
+                    DataCell(_RatingCell(driver: driver)),
                     DataCell(
                       Text(
                         driver.acceptanceLabel,
@@ -575,6 +560,78 @@ class _StatusPill extends StatelessWidget {
         label,
         style: Theme.of(context).textTheme.labelSmall?.copyWith(color: fg),
       ),
+    );
+  }
+}
+
+/// The status pill, with what stands beside it: where the licence check is,
+/// for a chofer who registered from the app and is not working yet, or where
+/// their evaluation stands, for a working chofer whose record has slipped —
+/// so nobody has to open each one to find out.
+class _StatusCell extends StatelessWidget {
+  const _StatusCell({required this.driver});
+
+  final Driver driver;
+
+  @override
+  Widget build(BuildContext context) {
+    final standing = DriverScorecard.of(driver).standing;
+    final beside = driver.status == DriverStatus.active
+        ? (standing.needsAttention ? DriverStandingChip(standing: standing) : null)
+        : switch (driver.licenseVerification) {
+            final verification? => Tooltip(
+                message: 'Licencia',
+                child: LicenseStatePill(state: verification.state),
+              ),
+            null => null,
+          };
+    if (beside == null) return _StatusPill(status: driver.status);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        _StatusPill(status: driver.status),
+        const SizedBox(height: Insets.xxs),
+        beside,
+      ],
+    );
+  }
+}
+
+/// What customers gave the chofer: stars, the average and how many ratings it
+/// rests on — "Nuevo" before the first, rather than a score nobody gave.
+class _RatingCell extends StatelessWidget {
+  const _RatingCell({required this.driver});
+
+  final Driver driver;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final palette = context.palette;
+    final count = driver.ratingCount;
+
+    if (count == 0) {
+      return Text(
+        'Nuevo',
+        key: Key('rating-${driver.id}'),
+        style: text.bodyMedium?.copyWith(color: palette.textMuted),
+      );
+    }
+    final average = driver.averageRating;
+    return Column(
+      key: Key('rating-${driver.id}'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        RatingStars(value: average),
+        const SizedBox(height: Insets.xxs),
+        Text(
+          '${average.toStringAsFixed(1)} · '
+          '$count ${count == 1 ? 'calificación' : 'calificaciones'}',
+          style: text.bodySmall?.copyWith(color: palette.textMuted),
+        ),
+      ],
     );
   }
 }

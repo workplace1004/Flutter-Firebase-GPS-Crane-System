@@ -6,27 +6,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 
-import '../../calls/voice_call.dart';
-import '../../domain/enums.dart';
-import '../../domain/failures.dart';
-import '../../domain/models/app_user.dart';
-import '../../domain/models/billing.dart';
-import '../../domain/models/chat_prefs.dart';
-import '../../domain/models/chat_request.dart';
-import '../../domain/models/dispatch_models.dart';
-import '../../domain/models/driver.dart';
-import '../../domain/models/insurer.dart';
-import '../../domain/models/insurer_invoice.dart';
-import '../../domain/models/insurer_service.dart';
-import '../../domain/models/payments.dart';
-import '../../domain/models/pricing_rule.dart';
-import '../../domain/models/remote_config_models.dart';
-import '../../domain/models/service.dart';
-import '../../domain/models/settlement.dart';
-import '../../domain/models/truck.dart';
-import '../../domain/repositories.dart';
-import '../../domain/value_objects.dart';
-import '../pricing.dart';
+import 'package:grua_core/grua_core.dart';
 import 'demo_backend.dart';
 
 /// Repository implementations backed by [DemoBackend].
@@ -264,6 +244,14 @@ class DemoDriverRepository implements DriverRepository {
       _backend.driverUpdates.map((all) => all[uid]);
 
   @override
+  Stream<List<DriverReview>> watchReviews({
+    String? driverId,
+    bool openOnly = false,
+    int limit = 50,
+  }) =>
+      _backend.reviewUpdates(driverId: driverId, openOnly: openOnly, limit: limit);
+
+  @override
   Stream<List<Driver>> watchAllDrivers({DriverStatus? status}) =>
       _backend.driverUpdates.map(
         (all) => all.values
@@ -394,8 +382,33 @@ class DemoServiceRepository implements ServiceRepository {
     required Uint8List bytes,
     required String contentType,
   }) =>
-      // No bucket in demo mode: the photo itself travels, as a data URI.
+      // No bucket here: the photo itself travels, as a data URI.
       _delayed(Result.ok(UriData.fromBytes(bytes, mimeType: contentType).toString()));
+
+  var _proofPhotos = 0;
+
+  @override
+  Future<Result<String>> uploadServicePhoto({
+    required String serviceId,
+    required ServicePhotoStage stage,
+    required Uint8List bytes,
+    required String contentType,
+  }) {
+    final path = 'service_photos/$serviceId/${stage.wire}_${_proofPhotos++}.jpg';
+    _backend.storeUpload(
+      path,
+      UriData.fromBytes(bytes, mimeType: contentType).toString(),
+    );
+    return _delayed(Result.ok(path));
+  }
+
+  @override
+  Future<Result<String>> servicePhotoUrl(String path) {
+    final url = _backend.uploadUrl(path);
+    return _delayed(
+      url == null ? const Result.err(Failure(FailureCode.notFound)) : Result.ok(url),
+    );
+  }
 
   @override
   Stream<Service?> watchActiveForClient(String clientId) =>
@@ -1274,6 +1287,7 @@ class DemoFunctionsGateway implements FunctionsGateway {
     if (service == null) {
       return const Result.err(Failure(FailureCode.notFound));
     }
+    _backend.recordProofPhotos(serviceId, ServicePhotoStage.pickup, photoPaths);
     return _delayed(
       _backend.transition(serviceId, ServiceStatus.inProgress,
           ServiceEventName.startService, _backend.currentUserId, UserRole.driver),
@@ -1286,16 +1300,18 @@ class DemoFunctionsGateway implements FunctionsGateway {
     required LatLng position,
     required List<String> photoPaths,
     String? notes,
-  }) async =>
-      _delayed(
-        _backend.transition(
-          serviceId,
-          ServiceStatus.completed,
-          ServiceEventName.completeService,
-          _backend.currentUserId,
-          UserRole.driver,
-        ),
-      );
+  }) async {
+    _backend.recordProofPhotos(serviceId, ServicePhotoStage.dropoff, photoPaths);
+    return _delayed(
+      _backend.transition(
+        serviceId,
+        ServiceStatus.completed,
+        ServiceEventName.completeService,
+        _backend.currentUserId,
+        UserRole.driver,
+      ),
+    );
+  }
 
   @override
   Future<Result<void>> confirmCashCollected({
@@ -1549,9 +1565,25 @@ class DemoFunctionsGateway implements FunctionsGateway {
   Future<Result<void>> rateService({
     required String serviceId,
     required int stars,
+    List<DriverRatingTag> tags = const [],
     String? comment,
   }) async =>
-      const Result.ok(null);
+      _delayed(
+        _backend.rateService(
+          serviceId,
+          _backend.currentUserId,
+          stars: stars,
+          tags: tags,
+          comment: comment ?? '',
+        ),
+      );
+
+  @override
+  Future<Result<void>> resolveDriverReview({
+    required String serviceId,
+    required String note,
+  }) async =>
+      _delayed(_backend.resolveReview(serviceId, _backend.currentUserId, note));
 
   @override
   Future<Result<CreatedDriver>> createDriver(NewDriver driver) async {

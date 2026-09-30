@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:grua_core/grua_core.dart';
+import 'package:grua_testing/grua_testing.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 /// Panel tests.

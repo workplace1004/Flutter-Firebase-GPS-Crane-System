@@ -8,6 +8,7 @@ import 'features/auth/login_screen.dart';
 import 'features/auth/register_screen.dart';
 import 'features/chat/chat_list_screen.dart';
 import 'features/earnings/earnings_screen.dart';
+import 'features/evaluation/evaluation_screen.dart';
 import 'features/home/driver_home_screen.dart';
 import 'features/notifications/notifications_screen.dart';
 import 'features/notifications/thread_read.dart';
@@ -34,6 +35,7 @@ abstract final class Routes {
   // Full-screen pages opened over the tabs.
   static const chat = '/servicio/:id/chat';
   static const earnings = '/ganancias';
+  static const evaluation = '/evaluacion';
   static const notifications = '/notificaciones';
   static const settlements = '/cortes';
   static const settlement = '/cortes/:id';
@@ -157,6 +159,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(path: Routes.earnings, builder: (_, _) => const EarningsScreen()),
+      GoRoute(
+        path: Routes.evaluation,
+        builder: (_, _) => const EvaluationScreen(),
+      ),
       GoRoute(
         path: Routes.settlements,
         builder: (_, _) => const SettlementsScreen(),

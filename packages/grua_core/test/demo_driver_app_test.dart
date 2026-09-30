@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:grua_core/grua_core.dart';
+import 'package:grua_testing/grua_testing.dart';
 
 /// The driver app's demo, walked by hand: it signs in as a chofer, shows last
 /// week's corte, and sends requests while the chofer is online.
