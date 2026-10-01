@@ -1565,7 +1565,7 @@ class DemoFunctionsGateway implements FunctionsGateway {
   Future<Result<void>> rateService({
     required String serviceId,
     required int stars,
-    List<DriverRatingTag> tags = const [],
+    List<RatingTag> tags = const [],
     String? comment,
   }) async =>
       _delayed(

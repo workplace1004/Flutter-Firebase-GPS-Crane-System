@@ -9,6 +9,7 @@ import 'package:grua_core/grua_core.dart';
 import '../../router.dart';
 import '../auth/app_presence.dart';
 import '../notifications/notification_widgets.dart';
+import '../rating/rate_client.dart';
 import 'driver_map.dart';
 import 'offer_card.dart';
 
@@ -129,6 +130,9 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 const _OfferStreamNotice(),
+                                // The customer of the job just finished,
+                                // while their rating is still owed.
+                                const PendingClientRating(),
                                 _OnlineCard(driver: driver),
                               ],
                             )

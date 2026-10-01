@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:grua_core/grua_core.dart';
 
+import '../evaluations/evaluation_widgets.dart';
+
 /// Registered customers.
 ///
 /// The office opens this list for three reasons: to find the person on the
@@ -265,6 +267,7 @@ class _ClientTable extends StatelessWidget {
               DataColumn(label: Text('RNC')),
               DataColumn(label: Text('PAGO')),
               DataColumn(label: Text('SERVICIOS'), numeric: true),
+              DataColumn(label: Text('CALIFICACIÓN')),
               DataColumn(label: Text('REGISTRADO')),
               DataColumn(label: Text('ESTADO')),
             ],
@@ -318,6 +321,7 @@ class _ClientTable extends StatelessWidget {
                     ),
                     DataCell(Text(client.preferredPaymentMethod.label)),
                     DataCell(Text('${client.completedServices}')),
+                    DataCell(_ClientRatingCell(client: client)),
                     DataCell(
                       client.createdAt == null
                           ? Text(
@@ -375,5 +379,41 @@ class _StatusPill extends StatelessWidget {
       return Tooltip(message: reason, child: pill);
     }
     return pill;
+  }
+}
+
+/// How choferes rated this customer: stars, the average and how many ratings
+/// it rests on.
+class _ClientRatingCell extends StatelessWidget {
+  const _ClientRatingCell({required this.client});
+
+  final AppUser client;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final palette = context.palette;
+    final count = client.ratingCount;
+    if (count == 0) {
+      return Text(
+        'Sin calificar',
+        key: Key('client-rating-${client.id}'),
+        style: text.bodyMedium?.copyWith(color: palette.textMuted),
+      );
+    }
+    final average = client.averageRating;
+    return Column(
+      key: Key('client-rating-${client.id}'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        RatingStars(value: average),
+        const SizedBox(height: Insets.xxs),
+        Text(
+          '${average.toStringAsFixed(1)} · $count',
+          style: text.bodySmall?.copyWith(color: palette.textMuted),
+        ),
+      ],
+    );
   }
 }

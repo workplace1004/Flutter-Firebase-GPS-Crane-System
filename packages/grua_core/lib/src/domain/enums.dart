@@ -715,12 +715,24 @@ enum CancelledBy {
       _resolve(CancelledBy.values, wire, (v) => v.wire, CancelledBy.unknown);
 }
 
+/// A tag given beside the stars, whichever side is rating.
+abstract interface class RatingTag {
+  String get wire;
+  String get label;
+
+  /// Praise, offered with four or five stars; otherwise a complaint.
+  bool get positive;
+
+  /// Sends the rating to the office whatever the stars.
+  bool get serious;
+}
+
 /// What a customer can say about the chofer beside the stars. Praise goes with
 /// four or five stars, complaints with three or fewer; the server drops a tag
 /// given with the wrong kind of rating.
 ///
 /// Mirrored in `functions/src/lib/driverRating.ts`.
-enum DriverRatingTag {
+enum DriverRatingTag implements RatingTag {
   @JsonValue('punctual')
   punctual('punctual', 'Llegó a tiempo', positive: true),
   @JsonValue('courteous')
@@ -751,11 +763,13 @@ enum DriverRatingTag {
     this.serious = false,
   });
 
+  @override
   final String wire;
+  @override
   final String label;
+  @override
   final bool positive;
-
-  /// Sends the rating to the office whatever the stars.
+  @override
   final bool serious;
 
   /// The tags a customer is offered for [stars].
@@ -769,6 +783,57 @@ enum DriverRatingTag {
         wire,
         (v) => v.wire,
         DriverRatingTag.unknown,
+      );
+}
+
+/// What a chofer can say about the customer beside the stars.
+///
+/// Mirrored in `functions/src/lib/driverRating.ts`.
+enum ClientRatingTag implements RatingTag {
+  @JsonValue('ready')
+  ready('ready', 'Estaba en el lugar', positive: true),
+  @JsonValue('courteous')
+  courteous('courteous', 'Amable', positive: true),
+  @JsonValue('accurate_info')
+  accurateInfo('accurate_info', 'Información correcta', positive: true),
+  @JsonValue('not_there')
+  notThere('not_there', 'No estaba en el lugar'),
+  @JsonValue('wrong_info')
+  wrongInfo('wrong_info', 'Datos del vehículo incorrectos'),
+  @JsonValue('rude')
+  rude('rude', 'Mal trato', serious: true),
+  @JsonValue('payment_problem')
+  paymentProblem('payment_problem', 'Problema con el pago', serious: true),
+  @JsonValue('unknown')
+  unknown('unknown', 'Otro');
+
+  const ClientRatingTag(
+    this.wire,
+    this.label, {
+    this.positive = false,
+    this.serious = false,
+  });
+
+  @override
+  final String wire;
+  @override
+  final String label;
+  @override
+  final bool positive;
+  @override
+  final bool serious;
+
+  /// The tags a chofer is offered for [stars].
+  static List<ClientRatingTag> forStars(int stars) => [
+        for (final tag in values)
+          if (tag != unknown && tag.positive == (stars >= 4)) tag,
+      ];
+
+  static ClientRatingTag fromWire(String? wire) => _resolve(
+        ClientRatingTag.values,
+        wire,
+        (v) => v.wire,
+        ClientRatingTag.unknown,
       );
 }
 

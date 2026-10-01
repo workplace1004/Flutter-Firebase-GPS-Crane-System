@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:grua_core/grua_core.dart';
 
 import '../../router.dart';
+import '../rating/rate_driver.dart';
 import 'truck_search.dart';
 import 'truck_search_widgets.dart';
 
@@ -190,7 +191,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 const SizedBox(height: Insets.sm),
                 // The mark over the map, as on the chofer's home. It lets
                 // touches through, so the map still pans under it.
-                const IgnorePointer(child: GruaLogo(size: 120)),
+                // Gives way on a short screen rather than pushing the
+                // cards below off it.
+                const Flexible(
+                  child: IgnorePointer(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: GruaLogo(size: 120),
+                    ),
+                  ),
+                ),
                 const Spacer(),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(
@@ -227,6 +237,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           ),
                         ),
                 ),
+                // The last tow's rating, when it is still owed: the router
+                // brings the customer here the moment a tow closes.
+                const PendingDriverRating(),
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: Insets.gutter),
                   child: FloatingCard(

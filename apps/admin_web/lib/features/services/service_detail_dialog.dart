@@ -142,12 +142,35 @@ class ServiceDetailDialog extends ConsumerWidget {
         ),
       if (rating != null && rating.isRated)
         _Card(
-          title: 'Calificación del cliente',
+          title: 'Calificación al chofer',
           icon: Icons.star_outline,
           tone: palette.warning,
           rows: [
             ('Estrellas', '${rating.stars} de 5'),
+            if (rating.ratingTags.isNotEmpty)
+              ('Etiquetas', rating.ratingTags.map((t) => t.label).join(', ')),
             if (rating.comment.isNotEmpty) ('Comentario', rating.comment),
+          ],
+        ),
+      if (s.ratings.driverToClient case final back? when back.isRated)
+        _Card(
+          key: const Key('driver-to-client-rating'),
+          title: 'Calificación al cliente',
+          icon: Icons.person_search_outlined,
+          tone: palette.warning,
+          rows: [
+            ('Estrellas', '${back.stars} de 5'),
+            if (back.tags.isNotEmpty)
+              (
+                'Etiquetas',
+                [
+                  for (final wire in back.tags)
+                    if (ClientRatingTag.fromWire(wire) case final tag
+                        when tag != ClientRatingTag.unknown)
+                      tag.label,
+                ].join(', '),
+              ),
+            if (back.comment.isNotEmpty) ('Comentario', back.comment),
           ],
         ),
       if (events.isNotEmpty) _History(events: events),
@@ -486,6 +509,7 @@ class _Card extends StatelessWidget {
     required this.rows,
     this.tone,
     this.copyable = const {},
+    super.key,
   });
 
   final String title;
@@ -623,7 +647,8 @@ class _CardTitle extends StatelessWidget {
       children: [
         Icon(icon, size: 16, color: tone ?? palette.textFaint),
         const SizedBox(width: Insets.sm),
-        FieldLabel(title.toUpperCase()),
+        // Wraps rather than running past a narrow column.
+        Flexible(child: FieldLabel(title.toUpperCase())),
       ],
     );
   }

@@ -265,5 +265,7 @@ Future<void> main() async {
 
     expect(find.text('NUEVA SOLICITUD'), findsNothing);
     expect(markersOnMap(tester).map((m) => m.label), ['Tú']);
+    // The home card it leaves behind looks up the last job to rate.
+    await tester.pump(const Duration(seconds: 1));
   });
 }

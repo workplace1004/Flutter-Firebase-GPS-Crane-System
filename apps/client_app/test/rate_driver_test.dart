@@ -21,8 +21,11 @@ Future<void> main() async {
   // Finished nine days ago: too late to rate.
   const old = 'svc-history-1';
 
-  Widget harness(DemoBackend backend) => ProviderScope(
+  Widget harness(DemoBackend backend, {Set<String> finished = const {}}) =>
+      ProviderScope(
         overrides: [
+          // Tows this session watched end.
+          finishedClientServicesProvider.overrideWith(() => _Ended(finished)),
           appConfigProvider.overrideWithValue(
             const AppConfig(
               flavor: Flavor.dev,
@@ -49,14 +52,17 @@ Future<void> main() async {
     }
   }
 
-  Future<DemoBackend> openDetail(WidgetTester tester, String serviceId) async {
+  Future<DemoBackend> signIn(
+    WidgetTester tester, {
+    Set<String> finished = const {},
+  }) async {
     tester.view
       ..devicePixelRatio = 1
       ..physicalSize = const Size(430, 1600);
     addTearDown(tester.view.reset);
 
     final backend = DemoBackend()..seed();
-    await tester.pumpWidget(harness(backend));
+    await tester.pumpWidget(harness(backend, finished: finished));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Entrar con Teléfono'));
     await tester.pumpAndSettle();
@@ -66,7 +72,13 @@ Future<void> main() async {
     await tester.pumpAndSettle(const Duration(seconds: 1));
     await tester.enterText(find.byType(TextField).first, '123456');
     await advance(tester, const Duration(seconds: 2));
+    return backend;
+  }
 
+  Future<DemoBackend> openDetail(WidgetTester tester, String serviceId) async {
+    final backend = await signIn(tester);
+    // Not asked on the home screen: this tow did not end in this session.
+    expect(find.byKey(const Key('rate-driver-sheet')), findsNothing);
     GoRouter.of(tester.element(find.byType(Scaffold).first))
         .go('/historial/$serviceId');
     await advance(tester, const Duration(seconds: 1));
@@ -148,4 +160,62 @@ Future<void> main() async {
     await advance(tester, const Duration(seconds: 2));
     await finish(tester, backend);
   });
+
+  testWidgets('a tow that just ended asks for the rating on the home screen',
+      (tester) async {
+    final backend = await signIn(tester, finished: {recent});
+
+    // The router brought the customer home; the sheet comes to them.
+    expect(find.byKey(const Key('rate-driver-sheet')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('rate-star-5')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('rate-tag-punctual')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('rate-send')));
+    await advance(tester, const Duration(seconds: 1));
+
+    expect(backend.service(recent)!.ratings.clientToDriver?.stars, 5);
+    // Rated: no sheet, no card.
+    expect(find.byKey(const Key('rate-driver-sheet')), findsNothing);
+    expect(find.byKey(const Key('rate-driver-card')), findsNothing);
+
+    await advance(tester, const Duration(seconds: 1));
+    await finish(tester, backend);
+  });
+
+  testWidgets('put off, the rating waits on a card until it is closed',
+      (tester) async {
+    final backend = await signIn(tester, finished: {recent});
+
+    await tester.tap(find.byKey(const Key('rate-later')));
+    await advance(tester, const Duration(seconds: 1));
+    expect(find.byKey(const Key('rate-driver-sheet')), findsNothing);
+
+    // Asked once: the card stays, the sheet does not come back by itself.
+    final card = find.byKey(const Key('rate-driver-card'));
+    expect(card, findsOneWidget);
+    await tester.tap(find.byKey(const Key('rate-card-star-4')));
+    await advance(tester, const Duration(seconds: 1));
+    expect(find.byKey(const Key('rate-driver-sheet')), findsOneWidget);
+    expect(find.text('Bueno'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('rate-later')));
+    await advance(tester, const Duration(seconds: 1));
+
+    await tester.tap(find.byKey(const Key('rate-card-close')));
+    await advance(tester, const Duration(seconds: 1));
+    expect(card, findsNothing);
+    expect(backend.service(recent)!.ratings.clientToDriver, isNull);
+
+    await finish(tester, backend);
+  });
+}
+
+/// [FinishedServices] that has already seen [ids] end.
+class _Ended extends FinishedServices {
+  _Ended(this.ids) : super(activeClientServiceProvider);
+
+  final Set<String> ids;
+
+  @override
+  Set<String> build() => ids;
 }

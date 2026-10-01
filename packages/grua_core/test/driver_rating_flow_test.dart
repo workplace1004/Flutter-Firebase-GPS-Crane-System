@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:grua_core/grua_core.dart';
@@ -107,5 +109,75 @@ void main() {
       note: 'Otra vez',
     );
     expect(twice.isErr, isTrue);
+  });
+
+  group('the chofer rating the customer', () {
+    test("lands on the service and the customer's record", () async {
+      final service = backend.service(recent)!;
+      backend.currentUserId = service.driverId!;
+
+      final result = await gateway().rateService(
+        serviceId: recent,
+        stars: 2,
+        tags: const [
+          ClientRatingTag.notThere,
+          // A chofer's praise tag means nothing about a customer: dropped.
+          DriverRatingTag.late,
+        ],
+        comment: 'Tuve que esperar 30 minutos',
+      );
+      expect(result.isOk, isTrue);
+
+      final back = backend.service(recent)!.ratings.driverToClient!;
+      expect(back.stars, 2);
+      expect(back.tags, ['not_there']);
+
+      final client = await container
+          .read(userRepositoryProvider)
+          .watchUser(service.clientId)
+          .first;
+      expect(client?.ratingCount, 1);
+      expect(client?.averageRating, 2);
+      expect(client?.ratingTags, {'not_there': 1});
+
+      // It is not a review of the chofer.
+      expect(backend.review(recent), isNull);
+    });
+
+    test('an insurer tow has no customer account to rate', () async {
+      // The last of the seeded insurer tows finished five hours ago.
+      backend.seedInsurerHistory();
+      final insurer = backend.service('svc-insurer-4')!;
+      expect(insurer.isInsurerJob, isTrue);
+      backend.currentUserId = insurer.driverId!;
+      final refused = await gateway().rateService(
+        serviceId: insurer.id,
+        stars: 5,
+      );
+      expect(refused.failureOrNull?.userMessage, contains('no tiene un cliente'));
+    });
+  });
+
+  test('a service that ends while watched is remembered, once', () async {
+    final active = StreamController<Service?>();
+    final watch = ProviderContainer(
+      overrides: [
+        activeClientServiceProvider.overrideWith((ref) => active.stream),
+      ],
+    );
+    addTearDown(() async {
+      watch.dispose();
+      await active.close();
+    });
+    watch.listen(finishedClientServicesProvider, (_, _) {});
+
+    final tow = backend.service(recent)!;
+    active.add(tow.copyWith(status: ServiceStatus.inProgress));
+    await Future<void>.delayed(Duration.zero);
+    expect(watch.read(finishedClientServicesProvider), isEmpty);
+
+    active.add(null);
+    await Future<void>.delayed(Duration.zero);
+    expect(watch.read(finishedClientServicesProvider), {recent});
   });
 }

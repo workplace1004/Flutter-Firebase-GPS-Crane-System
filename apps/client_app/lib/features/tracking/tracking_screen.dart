@@ -24,6 +24,9 @@ class TrackingScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final serviceAsync = ref.watch(serviceByIdProvider(serviceId));
+    // Started here, while the tow is on, so its end is noticed and the
+    // rating asked for on the home screen the router sends the customer to.
+    ref.watch(finishedClientServicesProvider);
 
     return Scaffold(
       backgroundColor: BrandColors.red,

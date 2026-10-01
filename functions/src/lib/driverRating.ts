@@ -39,6 +39,60 @@ export const SERIOUS_TAGS: readonly DriverRatingTag[] = [
   'rude',
 ];
 
+/**
+ * What a chofer can say about the customer. Mirrored in `enums.dart`
+ * (`ClientRatingTag`).
+ */
+export const CLIENT_POSITIVE_TAGS = ['ready', 'courteous', 'accurate_info'] as const;
+export const CLIENT_NEGATIVE_TAGS = [
+  'not_there',
+  'wrong_info',
+  'rude',
+  'payment_problem',
+] as const;
+
+export type ClientRatingTag =
+  | (typeof CLIENT_POSITIVE_TAGS)[number]
+  | (typeof CLIENT_NEGATIVE_TAGS)[number];
+
+/** A customer's rudeness or refusal to pay is the office's business. */
+export const CLIENT_SERIOUS_TAGS: readonly ClientRatingTag[] = ['rude', 'payment_problem'];
+
+/** Whether the office should hear about this rating of a customer. */
+export function needsClientReview(stars: number, tags: readonly string[]): boolean {
+  return (
+    stars <= 2 || tags.some((t) => (CLIENT_SERIOUS_TAGS as readonly string[]).includes(t))
+  );
+}
+
+/** As [tagsFor], for a chofer rating the customer. */
+export function clientTagsFor(stars: number, tags: readonly string[]): ClientRatingTag[] {
+  const allowed: readonly string[] = stars >= 4 ? CLIENT_POSITIVE_TAGS : CLIENT_NEGATIVE_TAGS;
+  return [...new Set(tags)].filter((t): t is ClientRatingTag => allowed.includes(t));
+}
+
+/** How choferes rated a customer, on `users/{uid}`. */
+export interface ClientRatingSummary {
+  ratingSum: number;
+  ratingCount: number;
+  ratingTags: Record<string, number>;
+}
+
+/** Folds one chofer's rating into the customer's summary. */
+export function applyClientRating(
+  current: Partial<ClientRatingSummary>,
+  stars: number,
+  tags: readonly string[],
+): ClientRatingSummary {
+  const ratingTags = { ...(current.ratingTags ?? {}) };
+  for (const tag of tags) ratingTags[tag] = (ratingTags[tag] ?? 0) + 1;
+  return {
+    ratingSum: (current.ratingSum ?? 0) + stars,
+    ratingCount: (current.ratingCount ?? 0) + 1,
+    ratingTags,
+  };
+}
+
 /** A tow can be rated for this long after it finished. */
 export const RATING_WINDOW_DAYS = 7;
 

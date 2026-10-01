@@ -1,6 +1,7 @@
 import 'package:admin_web/app.dart';
 import 'package:admin_web/features/drivers/driver_details_dialog.dart';
 import 'package:admin_web/features/evaluations/evaluation_widgets.dart';
+import 'package:admin_web/features/services/service_detail_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -217,6 +218,77 @@ Future<void> main() async {
     expect(
       tester.widget<Text>(find.byKey(const Key('rating-driver-2'))).data,
       'Nuevo',
+    );
+
+    await finish(tester, backend);
+  });
+
+  testWidgets('a chofer nobody has rated says so', (tester) async {
+    final backend = DemoBackend()
+      ..seed()
+      ..updateDriverForTest(
+        'driver-3',
+        (d) => d.copyWith(ratingSum: 0, ratingCount: 0),
+      );
+    await signIn(tester, backend);
+
+    final context = tester.element(find.byType(Scaffold).first);
+    // Not awaited: the dialog stays open while the test reads it.
+    // ignore: unawaited_futures
+    showDriverDetailsDialog(context, backend.driver('driver-3')!);
+    await tester.pumpAndSettle();
+
+    final stars = find.byKey(const Key('scorecard-stars'));
+    await tester.ensureVisible(stars);
+    expect(tester.widget<RatingStars>(stars).value, 0);
+    expect(find.byKey(const Key('scorecard-no-reviews')), findsOneWidget);
+
+    await finish(tester, backend);
+  });
+
+  testWidgets('the office sees how the chofer rated the customer', (tester) async {
+    final backend = DemoBackend()..seed();
+    final job = backend.service(rated)!;
+    expect(
+      backend
+          .rateService(
+            rated,
+            job.driverId!,
+            stars: 1,
+            tags: const [ClientRatingTag.paymentProblem],
+            comment: 'No quiso pagar el total',
+          )
+          .isOk,
+      isTrue,
+    );
+    await signIn(tester, backend);
+
+    // On the service.
+    final context = tester.element(find.byType(Scaffold).first);
+    // Not awaited: the dialog stays open while the test reads it.
+    // ignore: unawaited_futures
+    showServiceDetailDialog(context, backend.service(rated)!);
+    await tester.pumpAndSettle();
+    final card = find.byKey(const Key('driver-to-client-rating'));
+    await tester.ensureVisible(card);
+    expect(
+      find.descendant(of: card, matching: find.text('Problema con el pago')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: card, matching: find.text('No quiso pagar el total')),
+      findsOneWidget,
+    );
+    Navigator.of(tester.element(card)).pop();
+    await tester.pumpAndSettle();
+
+    // And on the customer.
+    await go(tester, '/clientes');
+    final cell = find.byKey(Key('client-rating-${job.clientId}'));
+    await tester.ensureVisible(cell);
+    expect(
+      find.descendant(of: cell, matching: find.text('1.0 · 1')),
+      findsOneWidget,
     );
 
     await finish(tester, backend);

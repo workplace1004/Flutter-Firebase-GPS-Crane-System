@@ -5,8 +5,14 @@ import { CONTACT_OPEN_STATUSES, ServiceStatus } from '../lib/enums.js';
 import { Code, invalidArgument, precondition } from '../lib/errors.js';
 import {
   ALL_TAGS,
+  applyClientRating,
   applyRating,
+  CLIENT_NEGATIVE_TAGS,
+  CLIENT_POSITIVE_TAGS,
+  type ClientRatingSummary,
+  clientTagsFor,
   type DriverRatingSummary,
+  needsClientReview,
   needsReview,
   RATING_WINDOW_DAYS,
   tagsFor,
@@ -55,7 +61,7 @@ export const rateService = onCall({ region, cors: true }, async (request) => {
     .object({
       serviceId: z.string().min(1).max(64),
       stars: z.number().int().min(1).max(5),
-      tags: z.array(z.string().max(40)).max(ALL_TAGS.length).default([]),
+      tags: z.array(z.string().max(40)).max(ALL_TAGS.length + CLIENT_POSITIVE_TAGS.length + CLIENT_NEGATIVE_TAGS.length).default([]),
       comment: z.string().max(500).nullish(),
     })
     .safeParse(request.data);
@@ -64,7 +70,6 @@ export const rateService = onCall({ region, cors: true }, async (request) => {
   const caller = requireAuth(request);
   const { serviceId, stars } = parsed.data;
   const comment = (parsed.data.comment ?? '').trim();
-  const tags = tagsFor(stars, parsed.data.tags);
 
   const review = await db.runTransaction(async (transaction) => {
     const snap = await transaction.get(Paths.service(serviceId));
@@ -97,6 +102,12 @@ export const rateService = onCall({ region, cors: true }, async (request) => {
       );
     }
 
+    // Each side has its own tags: a chofer is not "puntual" to a customer
+    // who "no estaba en el lugar".
+    const tags: string[] = isClient
+      ? tagsFor(stars, parsed.data.tags)
+      : clientTagsFor(stars, parsed.data.tags);
+
     const side = isClient ? 'clientToDriver' : 'driverToClient';
     const ratings = (service['ratings'] ?? {}) as Record<string, unknown>;
     if (ratings[side]) {
@@ -104,19 +115,50 @@ export const rateService = onCall({ region, cors: true }, async (request) => {
     }
 
     const driverId = service['driverId'] as string | undefined;
+    const clientId = (service['clientId'] as string | undefined) ?? '';
+    // An insurer's tow has no customer account to rate.
+    if (isDriver && !clientId) {
+      throw precondition(
+        Code.invalidTransition,
+        'Este servicio no tiene un cliente de la app para calificar.',
+      );
+    }
     const driverSnap =
       isClient && driverId ? await transaction.get(Paths.driver(driverId)) : undefined;
+    const clientSnap = isDriver ? await transaction.get(Paths.user(clientId)) : undefined;
 
     // Reads above, writes below: a transaction refuses a read after a write.
     transaction.update(Paths.service(serviceId), {
       [`ratings.${side}`]: {
         stars,
         comment,
-        ...(isClient ? { tags } : {}),
+        tags,
         ratedAt: FieldValue.serverTimestamp(),
       },
       updatedAt: FieldValue.serverTimestamp(),
     });
+
+    if (isDriver) {
+      if (clientSnap?.exists) {
+        transaction.update(Paths.user(clientId), {
+          ...applyClientRating(
+            (clientSnap.data() ?? {}) as Partial<ClientRatingSummary>,
+            stars,
+            tags,
+          ),
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+      }
+      return {
+        kind: 'client' as const,
+        flagged: needsClientReview(stars, tags),
+        stars,
+        comment,
+        serviceCode: (service['code'] as string | undefined) ?? '',
+        clientName: (service['clientName'] as string | undefined) ?? '',
+        driverName: (service['driverName'] as string | undefined) ?? '',
+      };
+    }
 
     if (!isClient || !driverId || !driverSnap?.exists) return null;
 
@@ -145,14 +187,21 @@ export const rateService = onCall({ region, cors: true }, async (request) => {
       ratedAt: FieldValue.serverTimestamp(),
     };
     transaction.create(Paths.driverReview(serviceId), filed);
-    return filed;
+    return { kind: 'driver' as const, flagged, ...filed };
   });
 
-  if (review && review.status === ReviewStatus.open) {
+  if (review?.kind === 'driver' && review.flagged) {
     await alertAdmins(
       `Calificación de ${review.stars} ★ a ${review.driverName || 'un chofer'}`,
       review.comment || `Servicio ${review.serviceCode}. Revísala en Evaluaciones.`,
       { type: 'driver_review', serviceId },
+    );
+  }
+  if (review?.kind === 'client' && review.flagged) {
+    await alertAdmins(
+      `${review.driverName || 'Un chofer'} calificó con ${review.stars} ★ a ${review.clientName || 'un cliente'}`,
+      review.comment || `Servicio ${review.serviceCode}.`,
+      { type: 'client_review', serviceId },
     );
   }
 

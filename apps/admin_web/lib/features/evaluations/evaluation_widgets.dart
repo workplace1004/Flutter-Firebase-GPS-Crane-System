@@ -178,7 +178,9 @@ class DriverScorecardView extends ConsumerWidget {
           children: [
             DriverStandingChip(standing: card.standing),
             const Spacer(),
-            if (card.hasRatings) StarsLine(stars: card.average.round()),
+            // Grey until the first rating, so the stars are plainly waiting
+            // rather than missing.
+            RatingStars(key: const Key('scorecard-stars'), value: card.average, size: 20),
           ],
         ),
         for (final reason in card.reasons)
@@ -265,15 +267,25 @@ class DriverScorecardView extends ConsumerWidget {
             ],
           ),
         ],
-        if (reviews.isNotEmpty) ...[
-          const SizedBox(height: Insets.md),
-          Text('Últimas evaluaciones', style: text.titleSmall),
+        const SizedBox(height: Insets.md),
+        Text('Comentarios de clientes', style: text.titleSmall),
+        if (reviews.isEmpty)
+          Padding(
+            key: const Key('scorecard-no-reviews'),
+            padding: const EdgeInsets.only(top: Insets.xs),
+            child: Text(
+              'Ningún cliente ha calificado a este chofer todavía. Las '
+              'calificaciones llegan desde la app de clientes al terminar '
+              'cada servicio.',
+              style: text.bodySmall?.copyWith(color: palette.textMuted),
+            ),
+          )
+        else
           for (final review in reviews)
             Padding(
               padding: const EdgeInsets.only(top: Insets.sm),
               child: ReviewSummary(review: review),
             ),
-        ],
       ],
     );
   }

@@ -136,6 +136,9 @@ class _ActiveServiceScreenState extends ConsumerState<ActiveServiceScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Started here, while the job is on, so its end is noticed and the
+    // customer's rating asked for on the home screen.
+    ref.watch(finishedDriverServicesProvider);
     final service = ref.watch(activeDriverServiceProvider).value;
     if (service == null) return const Scaffold(body: BrandLoader());
 

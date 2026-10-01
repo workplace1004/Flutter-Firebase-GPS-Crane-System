@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  applyClientRating,
   applyRating,
+  clientTagsFor,
+  needsClientReview,
   averageRating,
   dispatchRating,
   needsReview,
@@ -87,5 +90,34 @@ describe('driver rating', () => {
     expect(withinRatingWindow(finished, new Date('2026-09-08T12:00:00Z'))).toBe(true);
     expect(withinRatingWindow(finished, new Date('2026-09-08T12:00:01Z'))).toBe(false);
     expect(withinRatingWindow(undefined, new Date())).toBe(true);
+  });
+});
+
+/** A chofer's rating of the customer, and what it does to their record. */
+describe('client rating', () => {
+  it('keeps only customer tags that fit the stars', () => {
+    // "punctual" is praise for a chofer, not something a customer is.
+    expect(clientTagsFor(5, ['ready', 'punctual', 'not_there'])).toEqual(['ready']);
+    expect(clientTagsFor(1, ['ready', 'payment_problem', 'rude'])).toEqual([
+      'payment_problem',
+      'rude',
+    ]);
+  });
+
+  it('tells the office about rudeness and refusals to pay', () => {
+    expect(needsClientReview(4, [])).toBe(false);
+    expect(needsClientReview(3, ['not_there'])).toBe(false);
+    expect(needsClientReview(3, ['payment_problem'])).toBe(true);
+    expect(needsClientReview(2, [])).toBe(true);
+  });
+
+  it("folds into the customer's record", () => {
+    const once = applyClientRating({}, 5, ['ready']);
+    const twice = applyClientRating(once, 2, ['not_there']);
+    expect(twice).toEqual({
+      ratingSum: 7,
+      ratingCount: 2,
+      ratingTags: { ready: 1, not_there: 1 },
+    });
   });
 });

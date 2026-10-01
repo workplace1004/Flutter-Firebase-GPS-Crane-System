@@ -787,7 +787,7 @@ class DemoBackend {
     String serviceId,
     String raterId, {
     required int stars,
-    List<DriverRatingTag> tags = const [],
+    List<RatingTag> tags = const [],
     String comment = '',
   }) {
     final service = _services[serviceId];
@@ -824,15 +824,27 @@ class DemoBackend {
       );
     }
 
+    if (!isClient && service.clientId.isEmpty) {
+      return const Err(
+        Failure(
+          FailureCode.invalidTransition,
+          message: 'Este servicio no tiene un cliente de la app para calificar.',
+        ),
+      );
+    }
+    // Each side has its own tags, as `rateService` keeps them.
     final kept = [
       for (final tag in {...tags})
-        if (tag != DriverRatingTag.unknown && tag.positive == (stars >= 4)) tag,
+        if ((isClient ? tag is DriverRatingTag : tag is ClientRatingTag) &&
+            tag.wire != 'unknown' &&
+            tag.positive == (stars >= 4))
+          tag,
     ];
     final text = comment.trim();
     final rating = ServiceRating(
       stars: stars,
       comment: text,
-      tags: isClient ? [for (final tag in kept) tag.wire] : const [],
+      tags: [for (final tag in kept) tag.wire],
       ratedAt: _now(),
     );
     _services[serviceId] = service.copyWith(
@@ -840,6 +852,20 @@ class DemoBackend {
           ? service.ratings.copyWith(clientToDriver: rating)
           : service.ratings.copyWith(driverToClient: rating),
     );
+
+    final client = _users[service.clientId];
+    if (!isClient && client != null) {
+      final tagCounts = {...client.ratingTags};
+      for (final tag in kept) {
+        tagCounts[tag.wire] = (tagCounts[tag.wire] ?? 0) + 1;
+      }
+      _users[client.id] = client.copyWith(
+        ratingSum: client.ratingSum + stars,
+        ratingCount: client.ratingCount + 1,
+        ratingTags: tagCounts,
+      );
+      _usersController.add(Map.unmodifiable(_users));
+    }
 
     final driverId = service.driverId;
     final driver = driverId == null ? null : _drivers[driverId];

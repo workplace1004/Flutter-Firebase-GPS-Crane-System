@@ -1055,13 +1055,14 @@ abstract interface class FunctionsGateway {
     required DriverCancelReason reason,
   });
 
-  /// Rates the other side of a finished service. The customer's rating of
-  /// the chofer carries [tags]; the server keeps only those that fit the
-  /// stars.
+  /// Rates the other side of a finished service: the customer rates the
+  /// chofer with [DriverRatingTag]s, the chofer the customer with
+  /// [ClientRatingTag]s. The server keeps only the tags that fit the stars
+  /// and the side rating.
   Future<Result<void>> rateService({
     required String serviceId,
     required int stars,
-    List<DriverRatingTag> tags = const [],
+    List<RatingTag> tags = const [],
     String? comment,
   });
 

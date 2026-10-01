@@ -44,6 +44,14 @@ abstract class AppUser with _$AppUser {
     @JsonKey(unknownEnumValue: PaymentMethod.unknown)
     @Default(PaymentMethod.cash) PaymentMethod preferredPaymentMethod,
     @Default(0) int completedServices,
+
+    /// How choferes rated this customer: server-written, and outside the
+    /// fields the customer may update.
+    @Default(0) int ratingSum,
+    @Default(0) int ratingCount,
+
+    /// How often choferes gave each [ClientRatingTag], by wire.
+    @Default(<String, int>{}) Map<String, int> ratingTags,
     @NullableTimestampConverter() DateTime? createdAt,
     @NullableTimestampConverter() DateTime? updatedAt,
     @NullableTimestampConverter() DateTime? termsAcceptedAt,
@@ -63,6 +71,9 @@ abstract class AppUser with _$AppUser {
   NcfType get ncfType => billsWithRnc ? NcfType.creditoFiscal : NcfType.consumo;
 
   /// First name only, for greetings that should not shout a full legal name.
+  /// What choferes gave this customer on average, 0 before the first rating.
+  double get averageRating => ratingCount == 0 ? 0 : ratingSum / ratingCount;
+
   String get shortName {
     final trimmed = name.trim();
     if (trimmed.isEmpty) return 'Cliente';
