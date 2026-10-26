@@ -9,7 +9,7 @@ import '../palette.dart';
 import 'brand_widgets.dart';
 
 /// A weekly corte, laid out the way the office's printed example is: the
-/// insurer jobs Titan owes for, the cash jobs the chofer owes for, and the
+/// insurer jobs Drakegruas owes for, the cash jobs the chofer owes for, and the
 /// balance.
 ///
 /// Shared by the driver app and the panel, so both read the same page.
@@ -47,10 +47,10 @@ class SettlementView extends StatelessWidget {
         _Section(
           key: const Key('settlement-insurer'),
           title: 'Sección 1: Servicios de aseguradora',
-          subtitle: 'Titan le debe al conductor su parte',
+          subtitle: 'Drakegruas le debe al conductor su parte',
           shareHeader: 'A pagar al conductor',
           lines: s.insurerLines,
-          totalLabel: 'Total a pagar por Titan al conductor',
+          totalLabel: 'Total a pagar por Drakegruas al conductor',
           totalCents: s.insuranceOwedCents,
           color: palette.success,
           icon: Icons.shield_outlined,
@@ -59,10 +59,10 @@ class SettlementView extends StatelessWidget {
         _Section(
           key: const Key('settlement-cash'),
           title: 'Sección 2: Servicios en efectivo',
-          subtitle: 'El conductor le debe a Titan la comisión',
-          shareHeader: 'Comisión a Titan',
+          subtitle: 'El conductor le debe a Drakegruas la comisión',
+          shareHeader: 'Comisión a Drakegruas',
           lines: s.cashLines,
-          totalLabel: 'Total a pagar por el conductor a Titan',
+          totalLabel: 'Total a pagar por el conductor a Drakegruas',
           totalCents: s.commissionOwedCents,
           color: palette.warning,
           icon: Icons.payments_outlined,
@@ -76,11 +76,11 @@ class SettlementView extends StatelessWidget {
               Text('Sección 3: Cálculo final', style: text.titleMedium),
               const SizedBox(height: Insets.sm),
               _AmountRow(
-                label: 'Titan debe al conductor',
+                label: 'Drakegruas debe al conductor',
                 value: s.insuranceOwedCents.formatDOP,
               ),
               _AmountRow(
-                label: 'Menos: el conductor debe a Titan',
+                label: 'Menos: el conductor debe a Drakegruas',
                 value: '(${s.commissionOwedCents.formatDOP})',
                 color: palette.danger,
               ),
@@ -246,13 +246,13 @@ class _BalanceBanner extends StatelessWidget {
       SettlementDirection.toDriver => (
           palette.success,
           palette.successTint,
-          'Titan paga al conductor ${s.amountCents.formatDOP} por transferencia bancaria'
+          'Drakegruas paga al conductor ${s.amountCents.formatDOP} por transferencia bancaria'
               '${s.payBy == null ? '' : ' el ${DoTime.fullDate(s.payBy!)}'}.',
         ),
       SettlementDirection.toCompany => (
           palette.danger,
           palette.dangerTint,
-          'El conductor paga a Titan ${s.amountCents.formatDOP} por transferencia o depósito'
+          'El conductor paga a Drakegruas ${s.amountCents.formatDOP} por transferencia o depósito'
               '${s.payBy == null ? '' : ' antes del ${DoTime.fullDate(s.payBy!)}'}.',
         ),
       _ => (

@@ -626,7 +626,7 @@ final myRunningSettlementProvider = StreamProvider<SettlementDraft?>((ref) async
       );
 });
 
-/// What the signed-in chofer and Titan owe each other right now: every corte
+/// What the signed-in chofer and Drakegruas owe each other right now: every corte
 /// not yet paid, plus this week's so far. Null until the cortes load.
 final myDriverBalanceProvider = Provider<DriverBalance?>((ref) {
   final cortes = ref.watch(myDriverSettlementsProvider);

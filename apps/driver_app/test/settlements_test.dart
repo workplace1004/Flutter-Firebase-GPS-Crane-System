@@ -77,7 +77,7 @@ Future<void> main() async {
     final running = find.byKey(const Key('running-settlement'));
     expect(running, findsOneWidget);
     expect(
-      find.descendant(of: running, matching: find.text('Titan te debe ${95000.formatDOP}')),
+      find.descendant(of: running, matching: find.text('Drakegruas te debe ${95000.formatDOP}')),
       findsOneWidget,
     );
 
@@ -95,7 +95,7 @@ Future<void> main() async {
     await tester.tap(find.byKey(const Key('open-settlements')));
     await frames(tester);
     expect(find.text('Mis cortes'), findsOneWidget);
-    expect(find.textContaining('Titan te paga ${95000.formatDOP}'), findsOneWidget);
+    expect(find.textContaining('Drakegruas te paga ${95000.formatDOP}'), findsOneWidget);
 
     await tester.tap(find.byKey(Key('settlement-$id')));
     await frames(tester);
@@ -128,7 +128,7 @@ Future<void> main() async {
     expect(find.textContaining('Referencia BPD-778812'), findsOneWidget);
   });
 
-  testWidgets('a corte in Titan’s favour says the chofer pays', (tester) async {
+  testWidgets('a corte in Drakegruas’s favour says the chofer pays', (tester) async {
     tester.view
       ..devicePixelRatio = 1
       ..physicalSize = const Size(430, 2400);
@@ -152,10 +152,10 @@ Future<void> main() async {
     await frames(tester);
 
     expect(
-      find.text('SALDO FINAL A FAVOR DE TITAN: ${80000.formatDOP}'),
+      find.text('SALDO FINAL A FAVOR DE DRAKEGRUAS: ${80000.formatDOP}'),
       findsOneWidget,
     );
-    expect(find.textContaining('El conductor paga a Titan'), findsOneWidget);
+    expect(find.textContaining('El conductor paga a Drakegruas'), findsOneWidget);
     expect(find.text('Sin servicios en este período.'), findsOneWidget);
   });
 
@@ -186,7 +186,7 @@ Future<void> main() async {
     final pill = find.byKey(const Key('home-balance'));
     expect(pill, findsOneWidget);
     expect(
-      find.descendant(of: pill, matching: find.text('Titan te debe ${95000.formatDOP}')),
+      find.descendant(of: pill, matching: find.text('Drakegruas te debe ${95000.formatDOP}')),
       findsOneWidget,
     );
 
@@ -194,7 +194,7 @@ Future<void> main() async {
     await frames(tester);
     final balance = find.byKey(const Key('driver-balance'));
     expect(
-      find.descendant(of: balance, matching: find.text('Titan te debe ${95000.formatDOP}')),
+      find.descendant(of: balance, matching: find.text('Drakegruas te debe ${95000.formatDOP}')),
       findsOneWidget,
     );
     expect(
@@ -207,7 +207,7 @@ Future<void> main() async {
     backend.generateDriverSettlements(driverId: driverId, actorId: 'admin');
     await frames(tester);
     expect(
-      find.descendant(of: balance, matching: find.text('Titan te debe ${95000.formatDOP}')),
+      find.descendant(of: balance, matching: find.text('Drakegruas te debe ${95000.formatDOP}')),
       findsOneWidget,
     );
     expect(
@@ -221,7 +221,7 @@ Future<void> main() async {
     backend.settleDriverSettlement(id, reference: 'BPD-778812');
     await frames(tester);
     expect(
-      find.descendant(of: balance, matching: find.text('Estás al día con Titan')),
+      find.descendant(of: balance, matching: find.text('Estás al día con Drakegruas')),
       findsOneWidget,
     );
 
@@ -268,7 +268,7 @@ void _finish(DemoBackend backend, Service s) {
 }
 
 /// An insurer job (RD$1,750 to the chofer), unless [insurer] is false, then a
-/// cash job of RD$4,000 (RD$800 to Titan) — for the same chofer.
+/// cash job of RD$4,000 (RD$800 to Drakegruas) — for the same chofer.
 ///
 /// The insurer job goes first: it closes as soon as it is done, while a cash
 /// job keeps its chofer busy until the cash is confirmed.

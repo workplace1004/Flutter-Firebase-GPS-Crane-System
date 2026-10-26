@@ -230,7 +230,7 @@ class _Header extends ConsumerWidget {
 }
 
 /// Today's net, one tap from the full breakdown.
-/// What Titan and the chofer owe each other, as a chip under the header and
+/// What Drakegruas and the chofer owe each other, as a chip under the header and
 /// one tap from the cortes. Nothing at all while there is no balance.
 class _BalancePill extends ConsumerWidget {
   const _BalancePill();
@@ -268,8 +268,8 @@ class _BalancePill extends ConsumerWidget {
                   Flexible(
                     child: Text(
                       owed
-                          ? 'Titan te debe ${total.formatDOP}'
-                          : 'Debes ${(-total).formatDOP} a Titan',
+                          ? 'Drakegruas te debe ${total.formatDOP}'
+                          : 'Debes ${(-total).formatDOP} a Drakegruas',
                       overflow: TextOverflow.ellipsis,
                       style: text.titleSmall?.copyWith(color: color),
                     ),

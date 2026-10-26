@@ -16,6 +16,7 @@ export 'src/calls/voice_transport.dart';
 export 'src/chat/request_chat_screen.dart';
 export 'src/chat/service_chat_screen.dart';
 export 'src/config/app_config.dart';
+export 'src/config/legal_links.dart';
 // Data layer
 export 'src/data/converters.dart';
 export 'src/data/firebase/firebase_bootstrap.dart';

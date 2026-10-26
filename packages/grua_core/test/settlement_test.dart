@@ -113,7 +113,7 @@ void main() {
       });
       expect(s.driverPays, isTrue);
       expect(s.amountCents, 180000);
-      expect(s.balanceHeadline, contains('a favor de Titan'));
+      expect(s.balanceHeadline, contains('a favor de Drakegruas'));
       expect(s.balanceHeadline, isNot(contains('-')));
     });
 

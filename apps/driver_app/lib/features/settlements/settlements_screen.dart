@@ -5,7 +5,7 @@ import 'package:grua_core/grua_core.dart';
 
 import '../../router.dart';
 
-/// "Mis cortes": what Titan and the chofer owe each other, week by week.
+/// "Mis cortes": what Drakegruas and the chofer owe each other, week by week.
 ///
 /// On top, what Friday's corte will say so far; below, every corte the office
 /// has made, newest first.
@@ -56,7 +56,7 @@ class SettlementsScreen extends ConsumerWidget {
   }
 }
 
-/// "Mi balance": everything Titan and the chofer owe each other right now —
+/// "Mi balance": everything Drakegruas and the chofer owe each other right now —
 /// the cortes not yet paid, plus this week so far.
 class DriverBalanceCard extends StatelessWidget {
   const DriverBalanceCard({required this.balance, this.onOpen, super.key});
@@ -82,18 +82,18 @@ class DriverBalanceCard extends StatelessWidget {
     final (color, headline, explain) = switch (b.direction) {
       SettlementDirection.toDriver => (
           BrandColors.success,
-          'Titan te debe ${total.formatDOP}',
+          'Drakegruas te debe ${total.formatDOP}',
           'Se te paga por transferencia el viernes.',
         ),
       SettlementDirection.toCompany => (
           BrandColors.danger,
-          'Le debes a Titan ${(-total).formatDOP}',
+          'Le debes a Drakegruas ${(-total).formatDOP}',
           'Págalo por transferencia o depósito, a más tardar el viernes a las 5:00 p. m.',
         ),
       _ => (
           BrandColors.grey600,
-          'Estás al día con Titan',
-          'No hay saldo pendiente entre tú y Titan.',
+          'Estás al día con Drakegruas',
+          'No hay saldo pendiente entre tú y Drakegruas.',
         ),
     };
 
@@ -163,11 +163,11 @@ class RunningSettlementCard extends StatelessWidget {
     final (color, headline) = switch (SettlementDirection.ofBalance(balance)) {
       SettlementDirection.toDriver => (
           BrandColors.success,
-          'Titan te debe ${balance.formatDOP}',
+          'Drakegruas te debe ${balance.formatDOP}',
         ),
       SettlementDirection.toCompany => (
           BrandColors.danger,
-          'Le debes a Titan ${(-balance).formatDOP}',
+          'Le debes a Drakegruas ${(-balance).formatDOP}',
         ),
       _ => (BrandColors.grey600, 'Sin saldo esta semana'),
     };
@@ -183,11 +183,11 @@ class RunningSettlementCard extends StatelessWidget {
           if (d != null) ...[
             const SizedBox(height: Insets.md),
             DetailRow(
-              label: 'Aseguradoras: Titan te debe',
+              label: 'Aseguradoras: Drakegruas te debe',
               value: d.insuranceOwedCents.formatDOP,
             ),
             DetailRow(
-              label: 'Efectivo: comisión para Titan',
+              label: 'Efectivo: comisión para Drakegruas',
               value: '-${d.commissionOwedCents.formatDOP}',
               valueColor: BrandColors.grey600,
             ),
@@ -215,8 +215,8 @@ class _SettlementTile extends StatelessWidget {
     final s = settlement;
     final amount = s.amountCents.formatDOP;
     final (subtitle, color) = switch (s.direction) {
-      SettlementDirection.toDriver => ('Titan te paga $amount', BrandColors.success),
-      SettlementDirection.toCompany => ('Pagas a Titan $amount', BrandColors.danger),
+      SettlementDirection.toDriver => ('Drakegruas te paga $amount', BrandColors.success),
+      SettlementDirection.toCompany => ('Pagas a Drakegruas $amount', BrandColors.danger),
       _ => ('Sin saldo', BrandColors.grey600),
     };
 

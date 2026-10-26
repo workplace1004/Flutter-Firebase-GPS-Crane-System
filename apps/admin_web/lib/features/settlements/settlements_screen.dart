@@ -4,8 +4,8 @@ import 'package:grua_core/grua_core.dart';
 
 import '../shared/toast.dart';
 
-/// Cortes semanales: every Friday, what Titan pays each chofer and what each
-/// chofer pays Titan.
+/// Cortes semanales: every Friday, what Drakegruas pays each chofer and what each
+/// chofer pays Drakegruas.
 ///
 /// The cortes are made by the Friday run at 8:00; this screen is where the
 /// office pays them, records the transfer, and cancels one that came out
@@ -84,7 +84,7 @@ class _SettlementsScreenState extends ConsumerState<SettlementsScreen> {
                   const SizedBox(height: Insets.xs),
                   Text(
                     'Los viernes a las 8:00 se hace el corte de cada chofer: lo '
-                    'que Titan le debe por servicios de aseguradora, menos la '
+                    'que Drakegruas le debe por servicios de aseguradora, menos la '
                     'comisión de sus servicios en efectivo.',
                     style: text.bodyMedium?.copyWith(color: palette.textMuted),
                   ),
@@ -256,7 +256,7 @@ class _SettlementRow extends StatelessWidget {
     final palette = context.palette;
     final s = settlement;
     final (label, color) = switch (s.direction) {
-      SettlementDirection.toDriver => ('Titan paga', palette.success),
+      SettlementDirection.toDriver => ('Drakegruas paga', palette.success),
       SettlementDirection.toCompany => ('Chofer paga', palette.danger),
       _ => ('Sin saldo', palette.textMuted),
     };

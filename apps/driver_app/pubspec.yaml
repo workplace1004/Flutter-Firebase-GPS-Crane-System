@@ -1,7 +1,7 @@
 name: driver_app
 description: "Grúas RD 24/7 — app del chofer."
 publish_to: none
-version: 1.0.0+1
+version: 1.0.2+7
 resolution: workspace
 
 environment:
@@ -28,7 +28,6 @@ dependencies:
 
   # Offer delivery — the ringing screen
   flutter_local_notifications: ^22.3.0
-  flutter_callkit_incoming: ^3.1.5
 
   # The offer countdown reads time through this so tests can move it.
   clock: ^1.1.1

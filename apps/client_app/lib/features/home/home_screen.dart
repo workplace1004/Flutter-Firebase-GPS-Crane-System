@@ -191,17 +191,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 const SizedBox(height: Insets.sm),
                 // The mark over the map, as on the chofer's home. It lets
                 // touches through, so the map still pans under it.
-                // Gives way on a short screen rather than pushing the
-                // cards below off it.
-                const Flexible(
-                  child: IgnorePointer(
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: GruaLogo(size: 120),
+                // All the room between the top bar and the cards: the logo
+                // sits at its top, and shrinks on a short screen rather than
+                // pushing the cards off it. One Expanded, not a Flexible and
+                // a Spacer — those split the room in half, and the half the
+                // logo did not use was left as a gap under the button.
+                const Expanded(
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    child: IgnorePointer(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: GruaLogo(size: 120),
+                      ),
                     ),
                   ),
                 ),
-                const Spacer(),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(
                     Insets.gutter,

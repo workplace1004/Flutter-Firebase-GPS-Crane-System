@@ -43,15 +43,15 @@ class SettlementLine {
 }
 
 enum SettlementLineKind {
-  /// Titan owes the chofer.
+  /// Drakegruas owes the chofer.
   insurer,
 
-  /// The chofer owes Titan.
+  /// The chofer owes Drakegruas.
   cash,
   unknown,
 }
 
-/// A weekly corte, at `driverSettlements/{id}`: what Titan and a chofer owe
+/// A weekly corte, at `driverSettlements/{id}`: what Drakegruas and a chofer owe
 /// each other for a week, netted.
 ///
 /// Written only by the settlement callables. Mirrors
@@ -114,13 +114,13 @@ class DriverSettlement {
   final DateTime? periodEnd;
   final List<SettlementLine> lines;
 
-  /// Section 1: what Titan owes the chofer for insurer jobs.
+  /// Section 1: what Drakegruas owes the chofer for insurer jobs.
   final int insuranceOwedCents;
 
-  /// Section 2: what the chofer owes Titan for cash jobs.
+  /// Section 2: what the chofer owes Drakegruas for cash jobs.
   final int commissionOwedCents;
 
-  /// Section 3: positive, Titan pays; negative, the chofer pays.
+  /// Section 3: positive, Drakegruas pays; negative, the chofer pays.
   final int finalBalanceCents;
   final SettlementDirection direction;
   final SettlementStatus status;
@@ -155,7 +155,7 @@ class DriverSettlement {
         SettlementDirection.toDriver =>
           'Saldo final a favor del conductor: ${amountCents.formatDOP}',
         SettlementDirection.toCompany =>
-          'Saldo final a favor de Titan: ${amountCents.formatDOP}',
+          'Saldo final a favor de Drakegruas: ${amountCents.formatDOP}',
         _ => 'Sin saldo pendiente',
       };
 }

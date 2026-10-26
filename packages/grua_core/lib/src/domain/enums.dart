@@ -1071,11 +1071,11 @@ enum InsurerInvoiceLineKind {
 
 /// Who pays whom at a weekly corte.
 enum SettlementDirection {
-  /// Titan transfers the balance to the chofer.
+  /// Drakegruas transfers the balance to the chofer.
   @JsonValue('to_driver')
   toDriver('to_driver'),
 
-  /// The chofer transfers or deposits the balance to Titan.
+  /// The chofer transfers or deposits the balance to Drakegruas.
   @JsonValue('to_company')
   toCompany('to_company'),
 

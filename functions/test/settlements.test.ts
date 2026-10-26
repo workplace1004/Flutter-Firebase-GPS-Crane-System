@@ -48,7 +48,7 @@ describe('Carlos’s corte', () => {
   ];
   const draft = draftSettlement(entries, { cutoff: FRIDAY_8AM })!;
 
-  it('section 1: Titan owes RD$8,050 for three insurer jobs', () => {
+  it('section 1: Drakegruas owes RD$8,050 for three insurer jobs', () => {
     const lines = draft.lines.filter((l) => l.kind === 'insurer');
     expect(lines.map((l) => l.amountCents)).toEqual([245_000, 385_000, 175_000]);
     expect(lines.map((l) => l.grossCents)).toEqual([350_000, 550_000, 250_000]);
@@ -61,7 +61,7 @@ describe('Carlos’s corte', () => {
     expect(draft.commissionOwedCents).toBe(180_000);
   });
 
-  it('section 3: Titan pays Carlos RD$6,250', () => {
+  it('section 3: Drakegruas pays Carlos RD$6,250', () => {
     expect(draft.finalBalanceCents).toBe(625_000);
     expect(draft.direction).toBe('to_driver');
   });
@@ -89,7 +89,7 @@ describe('the other examples', () => {
     expect(draft.direction).toBe('to_driver');
   });
 
-  it('a week of cash only: the chofer pays Titan', () => {
+  it('a week of cash only: the chofer pays Drakegruas', () => {
     const draft = draftSettlement(
       [cash(4_000, 800, '2024-09-02T09:00:00'), cash(5_000, 1_000, '2024-09-03T09:00:00')],
       { cutoff: FRIDAY_8AM },

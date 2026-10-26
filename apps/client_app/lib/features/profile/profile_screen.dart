@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grua_core/grua_core.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../router.dart';
 
@@ -128,8 +129,20 @@ class ProfileScreen extends ConsumerWidget {
                       const Divider(indent: Insets.huge),
                       _Row(
                         icon: Icons.description_outlined,
-                        label: 'Términos y privacidad',
-                        onTap: () => _notYet(context),
+                        label: 'Privacidad',
+                        onTap: () => launchUrl(
+                          LegalLinks.privacyPolicy,
+                          mode: LaunchMode.externalApplication,
+                        ),
+                      ),
+                      const Divider(indent: Insets.huge),
+                      _Row(
+                        icon: Icons.person_remove_outlined,
+                        label: 'Eliminar mi cuenta',
+                        onTap: () => launchUrl(
+                          LegalLinks.accountDeletion,
+                          mode: LaunchMode.externalApplication,
+                        ),
                       ),
                     ],
                   ),

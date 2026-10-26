@@ -122,7 +122,7 @@ describeEmulator('weekly cortes', () => {
 
   beforeEach(wipe);
 
-  it('makes Carlos’s corte: Titan pays RD$6,250', async () => {
+  it('makes Carlos’s corte: Drakegruas pays RD$6,250', async () => {
     await carlosWeek();
     const { created } = await call(fns.generateDriverSettlements, { driverId: 'carlos' }, ADMIN);
 
@@ -269,7 +269,7 @@ describeEmulator('weekly cortes', () => {
     expect((await entryData('carlos', 'ins-1'))['settled']).toBe(false);
   });
 
-  it('a week of cash: the chofer pays Titan', async () => {
+  it('a week of cash: the chofer pays Drakegruas', async () => {
     await driver('pedro', 180_000);
     await entry('pedro', 'c1', 'cash', 4_000, 800, hoursAgo(30));
     await entry('pedro', 'c2', 'cash', 5_000, 1_000, hoursAgo(20));

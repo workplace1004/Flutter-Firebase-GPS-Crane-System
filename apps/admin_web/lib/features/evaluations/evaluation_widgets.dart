@@ -113,11 +113,11 @@ class RatingStars extends StatelessWidget {
   }
 }
 
-/// A tag a customer gave, green for praise and red for a complaint.
+/// A tag given with a rating, green for praise and red for a complaint.
 class RatingTagChip extends StatelessWidget {
   const RatingTagChip({required this.tag, this.count, super.key});
 
-  final DriverRatingTag tag;
+  final RatingTag tag;
   final int? count;
 
   @override

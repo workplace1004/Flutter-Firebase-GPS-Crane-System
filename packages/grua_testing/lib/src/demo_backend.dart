@@ -915,6 +915,96 @@ class DemoBackend {
     return const Ok(null);
   }
 
+  AppUser? _client(String clientId) {
+    final user = _users[clientId];
+    return user == null || user.role != UserRole.client ? null : user;
+  }
+
+  /// As `updateClient`: the details the office may correct, checked the same
+  /// way.
+  Result<void> updateClient(
+    String clientId, {
+    required String name,
+    required String email,
+    required String rnc,
+    required String address,
+  }) {
+    final client = _client(clientId);
+    if (client == null) {
+      return const Err(
+        Failure(FailureCode.notFound, message: 'Cliente no encontrado.'),
+      );
+    }
+    final digits = rnc.replaceAll(RegExp(r'\D'), '');
+    if (name.trim().length < 2 ||
+        (email.trim().isNotEmpty && !email.contains('@')) ||
+        !(digits.isEmpty || digits.length == 9 || digits.length == 11)) {
+      return const Err(
+        Failure(
+          FailureCode.invalidInput,
+          message: 'Revisa los datos del cliente.',
+        ),
+      );
+    }
+    _users[clientId] = client.copyWith(
+      name: name.trim(),
+      email: email.trim(),
+      rnc: digits,
+      address: address.trim(),
+    );
+    _emitUsers();
+    return const Ok(null);
+  }
+
+  /// As `setClientBlocked`.
+  Result<void> setClientBlocked(
+    String clientId, {
+    required bool blocked,
+    String reason = '',
+  }) {
+    final client = _client(clientId);
+    if (client == null) {
+      return const Err(
+        Failure(FailureCode.notFound, message: 'Cliente no encontrado.'),
+      );
+    }
+    if (blocked && reason.trim().length < 3) {
+      return const Err(
+        Failure(
+          FailureCode.invalidInput,
+          message: 'Escribe por qué se bloquea a este cliente.',
+        ),
+      );
+    }
+    _users[clientId] = client.copyWith(
+      blocked: blocked,
+      blockedReason: blocked ? reason.trim() : '',
+    );
+    _emitUsers();
+    return const Ok(null);
+  }
+
+  /// As `deleteClient`: refused mid-tow; the services stay.
+  Result<void> deleteClient(String clientId) {
+    if (_client(clientId) == null) {
+      return const Err(
+        Failure(FailureCode.notFound, message: 'Cliente no encontrado.'),
+      );
+    }
+    if (_services.values.any((s) => s.clientId == clientId && s.isActive)) {
+      return const Err(
+        Failure(
+          FailureCode.invalidTransition,
+          message:
+              'Este cliente tiene un servicio en curso. Elimínalo cuando termine.',
+        ),
+      );
+    }
+    _users.remove(clientId);
+    _emitUsers();
+    return const Ok(null);
+  }
+
   /// Closes a flagged review, as `resolveDriverReview` does.
   Result<void> resolveReview(String serviceId, String actorId, String note) {
     final review = _reviews[serviceId];

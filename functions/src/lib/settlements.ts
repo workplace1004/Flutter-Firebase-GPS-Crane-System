@@ -8,7 +8,7 @@ import { fromLocal, startOfLocalDay, toLocal } from './time.js';
  * commission. On an insurer's tow nobody paid the chofer, so the company owes
  * them their share. Once a week the two are netted:
  *
- *     balance = (what Titan owes for insurer jobs) − (commission owed on cash jobs)
+ *     balance = (what Drakegruas owes for insurer jobs) − (commission owed on cash jobs)
  *
  * Positive, the company transfers the balance to the chofer on Friday.
  * Negative, the chofer transfers or deposits it to the company.

@@ -206,7 +206,7 @@ void _finish(DemoBackend backend, Service s) {
 }
 
 /// An insurer job (RD$1,750 to the chofer), unless [insurer] is false, then a
-/// cash job of RD$4,000 (RD$800 to Titan), for the same chofer.
+/// cash job of RD$4,000 (RD$800 to Drakegruas), for the same chofer.
 Future<String> _aWeek(DemoBackend backend, {bool insurer = true}) async {
   String? driverId;
   if (insurer) {

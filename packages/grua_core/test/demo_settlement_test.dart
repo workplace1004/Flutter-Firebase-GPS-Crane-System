@@ -47,7 +47,7 @@ void main() {
   }
 
   /// One insurer job (RD$1,750 to the chofer) and one cash job of RD$4,000
-  /// (RD$800 to Titan), both for the same chofer.
+  /// (RD$800 to Drakegruas), both for the same chofer.
   Future<String> aWeek() async {
     final insurerJob = await assigned(
       backend

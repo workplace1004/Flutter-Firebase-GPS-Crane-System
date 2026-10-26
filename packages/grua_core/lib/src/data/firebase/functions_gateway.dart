@@ -320,6 +320,38 @@ class FirebaseFunctionsGateway implements FunctionsGateway {
   }) =>
       _callVoid('resolveDriverReview', {'serviceId': serviceId, 'note': note});
 
+  @override
+  Future<Result<void>> updateClient({
+    required String clientId,
+    required String name,
+    required String email,
+    required String rnc,
+    required String address,
+  }) =>
+      _callVoid('updateClient', {
+        'clientId': clientId,
+        'name': name,
+        'email': email,
+        'rnc': rnc,
+        'address': address,
+      });
+
+  @override
+  Future<Result<void>> setClientBlocked({
+    required String clientId,
+    required bool blocked,
+    String reason = '',
+  }) =>
+      _callVoid('setClientBlocked', {
+        'clientId': clientId,
+        'blocked': blocked,
+        'reason': reason,
+      });
+
+  @override
+  Future<Result<void>> deleteClient(String clientId) =>
+      _callVoid('deleteClient', {'clientId': clientId});
+
   // -------------------------------------------------------------------------
   // Driver
   // -------------------------------------------------------------------------

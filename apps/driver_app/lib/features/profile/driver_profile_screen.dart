@@ -134,6 +134,24 @@ class DriverProfileScreen extends ConsumerWidget {
                         onTap: () =>
                             _callSupport(context, settings?.supportPhone ?? ''),
                       ),
+                      const Divider(indent: Insets.huge),
+                      _Row(
+                        icon: Icons.description_outlined,
+                        label: 'Privacidad',
+                        onTap: () => launchUrl(
+                          LegalLinks.privacyPolicy,
+                          mode: LaunchMode.externalApplication,
+                        ),
+                      ),
+                      const Divider(indent: Insets.huge),
+                      _Row(
+                        icon: Icons.person_remove_outlined,
+                        label: 'Eliminar mi cuenta',
+                        onTap: () => launchUrl(
+                          LegalLinks.accountDeletion,
+                          mode: LaunchMode.externalApplication,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -142,7 +160,7 @@ class DriverProfileScreen extends ConsumerWidget {
                 const SizedBox(height: Insets.lg),
                 Center(
                   child: Text(
-                    'Grúas RD 24/7 · Chofer · ${config.flavor.wire}',
+                    'Drakegruas Express · Chofer · ${config.flavor.wire}',
                     style: text.bodySmall?.copyWith(color: BrandColors.grey400),
                   ),
                 ),

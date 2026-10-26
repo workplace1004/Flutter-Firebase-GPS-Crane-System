@@ -1586,6 +1586,38 @@ class DemoFunctionsGateway implements FunctionsGateway {
       _delayed(_backend.resolveReview(serviceId, _backend.currentUserId, note));
 
   @override
+  Future<Result<void>> updateClient({
+    required String clientId,
+    required String name,
+    required String email,
+    required String rnc,
+    required String address,
+  }) async =>
+      _delayed(
+        _backend.updateClient(
+          clientId,
+          name: name,
+          email: email,
+          rnc: rnc,
+          address: address,
+        ),
+      );
+
+  @override
+  Future<Result<void>> setClientBlocked({
+    required String clientId,
+    required bool blocked,
+    String reason = '',
+  }) async =>
+      _delayed(
+        _backend.setClientBlocked(clientId, blocked: blocked, reason: reason),
+      );
+
+  @override
+  Future<Result<void>> deleteClient(String clientId) async =>
+      _delayed(_backend.deleteClient(clientId));
+
+  @override
   Future<Result<CreatedDriver>> createDriver(NewDriver driver) async {
     final created = _backend.createDriver(
       name: driver.name,

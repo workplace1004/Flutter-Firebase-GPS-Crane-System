@@ -2,9 +2,9 @@ import 'package:flutter/foundation.dart';
 
 /// Which Firebase project / build variant this binary talks to.
 enum Flavor {
-  dev('dev', 'Grúas RD DEV'),
-  stg('stg', 'Grúas RD STG'),
-  prod('prod', 'Grúas RD');
+  dev('dev', 'Drakegruas DEV'),
+  stg('stg', 'Drakegruas STG'),
+  prod('prod', 'Drakegruas Express');
 
   const Flavor(this.wire, this.appName);
 

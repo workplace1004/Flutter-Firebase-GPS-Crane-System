@@ -22,7 +22,7 @@ class GruaLogo extends StatelessWidget {
       fit: BoxFit.contain,
       // The mark is the only thing identifying the app on the splash and login
       // screens, so it carries meaning and is not decorative.
-      semanticLabel: 'Grúas RD 24/7',
+      semanticLabel: 'Drakegruas Express 24/7',
     );
   }
 

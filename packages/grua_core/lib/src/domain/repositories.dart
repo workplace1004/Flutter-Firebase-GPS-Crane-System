@@ -1072,6 +1072,28 @@ abstract interface class FunctionsGateway {
     required String note,
   });
 
+  /// Corrects a customer's details. Staff only. The phone is not here: it is
+  /// how they sign in.
+  Future<Result<void>> updateClient({
+    required String clientId,
+    required String name,
+    required String email,
+    required String rnc,
+    required String address,
+  });
+
+  /// Blocks a customer from requesting, with the reason the office reads, or
+  /// lets them request again. Staff only.
+  Future<Result<void>> setClientBlocked({
+    required String clientId,
+    required bool blocked,
+    String reason = '',
+  });
+
+  /// Deletes a customer's account for good; their past services stay. Admin
+  /// only, and refused while they have a tow in progress.
+  Future<Result<void>> deleteClient(String clientId);
+
   /// A short-lived signed URL for an invoice PDF.
   ///
   /// Minted by a callable rather than read from Storage: the bucket refuses

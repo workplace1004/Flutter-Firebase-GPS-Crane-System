@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
@@ -17,8 +18,12 @@
     <!-- The chofer app keeps reporting position with the screen off.
          Without a foreground service Android stops delivering updates
          within minutes, which means disappearing from dispatch
-         mid-shift. -->
-    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"/>
+         mid-shift. The service is started while the app is open, so
+         "while in use" permission is enough: background location is
+         stripped (also from any plugin manifest) to stay out of Play's
+         background-location review. -->
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"
+        tools:node="remove"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>
     <uses-permission android:name="android.permission.WAKE_LOCK"/>

@@ -371,7 +371,7 @@ class LocationService {
             // within minutes of the screen going off, which for a chofer means
             // vanishing from dispatch mid-shift.
             foregroundNotificationConfig: const ForegroundNotificationConfig(
-              notificationTitle: 'Grúas RD 24/7',
+              notificationTitle: 'Drakegruas Express',
               notificationText: 'Compartiendo tu ubicación mientras trabajas',
               enableWakeLock: true,
               setOngoing: true,

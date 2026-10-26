@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:grua_core/grua_core.dart';
 
 import '../evaluations/evaluation_widgets.dart';
+import 'client_actions.dart';
 
 /// Registered customers.
 ///
@@ -239,13 +240,13 @@ class _FilterDropdown extends StatelessWidget {
   }
 }
 
-class _ClientTable extends StatelessWidget {
+class _ClientTable extends ConsumerWidget {
   const _ClientTable({required this.clients});
 
   final List<AppUser> clients;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final text = Theme.of(context).textTheme;
     final palette = context.palette;
 
@@ -258,18 +259,24 @@ class _ClientTable extends StatelessWidget {
             minWidth: MediaQuery.sizeOf(context).width - 300,
           ),
           child: DataTable(
+            // Tighter than the default 56, as on Choferes, so the actions fit
+            // a laptop screen instead of sitting past a sideways scroll.
+            columnSpacing: 28,
+            // Room for the three-line customer cell: name, email, phone.
+            dataRowMinHeight: 64,
+            dataRowMaxHeight: 68,
             headingRowColor: WidgetStatePropertyAll(palette.canvas),
             headingTextStyle: text.labelSmall,
             dividerThickness: 1,
             columns: const [
               DataColumn(label: Text('CLIENTE')),
-              DataColumn(label: Text('CORREO')),
               DataColumn(label: Text('RNC')),
               DataColumn(label: Text('PAGO')),
               DataColumn(label: Text('SERVICIOS'), numeric: true),
               DataColumn(label: Text('CALIFICACIÓN')),
               DataColumn(label: Text('REGISTRADO')),
               DataColumn(label: Text('ESTADO')),
+              DataColumn(label: Text('ACCIONES')),
             ],
             rows: [
               for (final client in clients)
@@ -288,21 +295,20 @@ class _ClientTable extends StatelessWidget {
                                   : palette.textMuted,
                             ),
                           ),
+                          // Under the name rather than a column of its own,
+                          // as on Choferes, so the actions fit a laptop.
+                          if (client.email.isNotEmpty)
+                            Text(
+                              client.email,
+                              style: text.bodySmall
+                                  ?.copyWith(color: palette.textStrong),
+                            ),
                           Text(
                             client.displayPhone,
                             style: text.bodySmall
                                 ?.copyWith(color: palette.textMuted),
                           ),
                         ],
-                      ),
-                    ),
-                    DataCell(
-                      Text(
-                        client.email.isEmpty ? '—' : client.email,
-                        style: client.email.isEmpty
-                            ? text.bodyMedium
-                                ?.copyWith(color: palette.textFaint)
-                            : text.bodyMedium,
                       ),
                     ),
                     DataCell(
@@ -335,6 +341,7 @@ class _ClientTable extends StatelessWidget {
                             ),
                     ),
                     DataCell(_StatusPill(client: client)),
+                    DataCell(_Actions(client: client)),
                   ],
                 ),
             ],
@@ -395,10 +402,19 @@ class _ClientRatingCell extends StatelessWidget {
     final palette = context.palette;
     final count = client.ratingCount;
     if (count == 0) {
-      return Text(
-        'Sin calificar',
+      // Grey stars, so the column reads as waiting rather than missing.
+      return Column(
         key: Key('client-rating-${client.id}'),
-        style: text.bodyMedium?.copyWith(color: palette.textMuted),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const RatingStars(value: 0),
+          const SizedBox(height: Insets.xxs),
+          Text(
+            'Sin calificar',
+            style: text.bodySmall?.copyWith(color: palette.textMuted),
+          ),
+        ],
       );
     }
     final average = client.averageRating;
@@ -412,6 +428,53 @@ class _ClientRatingCell extends StatelessWidget {
         Text(
           '${average.toStringAsFixed(1)} · $count',
           style: text.bodySmall?.copyWith(color: palette.textMuted),
+        ),
+      ],
+    );
+  }
+}
+
+/// Ver, editar, bloquear o desbloquear, eliminar — as on the Choferes list.
+class _Actions extends ConsumerWidget {
+  const _Actions({required this.client});
+
+  final AppUser client;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final palette = context.palette;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          key: Key('client-view-${client.id}'),
+          tooltip: 'Ver',
+          visualDensity: VisualDensity.compact,
+          onPressed: () => unawaited(showClientDetailsDialog(context, ref, client)),
+          icon: const Icon(Icons.visibility_outlined, size: 20),
+        ),
+        IconButton(
+          key: Key('client-edit-${client.id}'),
+          tooltip: 'Editar',
+          visualDensity: VisualDensity.compact,
+          onPressed: () => unawaited(showEditClientDialog(context, ref, client)),
+          icon: const Icon(Icons.edit_outlined, size: 20),
+        ),
+        IconButton(
+          key: Key('client-block-${client.id}'),
+          tooltip: client.blocked ? 'Desbloquear' : 'Bloquear',
+          visualDensity: VisualDensity.compact,
+          onPressed: () => unawaited(toggleClientBlocked(context, ref, client)),
+          icon: client.blocked
+              ? Icon(Icons.check_circle_outline, size: 20, color: palette.success)
+              : Icon(Icons.block, size: 20, color: palette.warning),
+        ),
+        IconButton(
+          key: Key('client-delete-${client.id}'),
+          tooltip: 'Eliminar',
+          visualDensity: VisualDensity.compact,
+          onPressed: () => unawaited(deleteClientAccount(context, ref, client)),
+          icon: Icon(Icons.delete_outline, size: 20, color: palette.danger),
         ),
       ],
     );

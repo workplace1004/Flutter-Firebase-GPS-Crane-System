@@ -177,7 +177,7 @@ class _CashOwedCard extends StatelessWidget {
           Text(
             'Es la comisión de los servicios que cobraste en efectivo. Se '
             'descuenta en tu corte del viernes; si ese corte sale a favor de '
-            'Titan, la pagas por transferencia o depósito.',
+            'Drakegruas, la pagas por transferencia o depósito.',
             style: text.bodySmall?.copyWith(color: BrandColors.grey600),
           ),
         ],

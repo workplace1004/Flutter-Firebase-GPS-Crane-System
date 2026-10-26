@@ -744,7 +744,7 @@ class _TerminalBody extends StatelessWidget {
             child: EmptyState(
               title: completed ? 'Servicio completado' : 'Servicio cancelado',
               message: completed
-                  ? 'Gracias por usar Grúas RD. Puedes ver la factura en tu '
+                  ? 'Gracias por usar Drakegruas Express. Puedes ver la factura en tu '
                       'historial.'
                   : 'Este servicio fue cancelado. Puedes pedir otra grúa cuando '
                       'lo necesites.',

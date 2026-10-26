@@ -40,10 +40,10 @@ class SettlementDraft {
       SettlementDirection.ofBalance(finalBalanceCents);
 }
 
-/// What a chofer and Titan owe each other right now.
+/// What a chofer and Drakegruas owe each other right now.
 ///
 /// Every corte still pending, plus what this week's corte says so far. A
-/// positive balance is Titan's to pay; a negative one, the chofer's.
+/// positive balance is Drakegruas's to pay; a negative one, the chofer's.
 @immutable
 class DriverBalance {
   const DriverBalance({
@@ -99,7 +99,7 @@ class DriverBalance {
 /// `test/fixtures/settlement_cases.json`. The server writes the real corte —
 /// this one draws what the next corte will say, and runs the test backend.
 ///
-///     balance = (what Titan owes for insurer jobs) − (commission owed on cash jobs)
+///     balance = (what Drakegruas owes for insurer jobs) − (commission owed on cash jobs)
 abstract final class SettlementMath {
   /// The corte for everything in [entries] finished by [cutoff], or `null`.
   ///

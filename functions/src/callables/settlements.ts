@@ -193,9 +193,9 @@ export async function generateSettlementFor(options: {
 
   const body =
     result.direction === SettlementDirection.toDriver
-      ? `Titan te paga ${pesos(result.finalBalanceCents)} por transferencia el viernes.`
+      ? `Drakegruas te paga ${pesos(result.finalBalanceCents)} por transferencia el viernes.`
       : result.direction === SettlementDirection.toCompany
-        ? `Debes pagar ${pesos(result.finalBalanceCents)} a Titan por transferencia o depósito.`
+        ? `Debes pagar ${pesos(result.finalBalanceCents)} a Drakegruas por transferencia o depósito.`
         : 'Esta semana no hay saldo pendiente.';
   await notify({
     uid: driverId,
