@@ -363,24 +363,41 @@ class LocationService {
     int distanceFilter = 25,
     bool background = false,
   }) {
-    final settings = background
-        ? AndroidSettings(
-            accuracy: LocationAccuracy.high,
-            distanceFilter: distanceFilter,
-            // Without a foreground service Android stops delivering updates
-            // within minutes of the screen going off, which for a chofer means
-            // vanishing from dispatch mid-shift.
-            foregroundNotificationConfig: const ForegroundNotificationConfig(
-              notificationTitle: 'Drakegruas Express',
-              notificationText: 'Compartiendo tu ubicación mientras trabajas',
-              enableWakeLock: true,
-              setOngoing: true,
-            ),
-          )
-        : LocationSettings(
-            accuracy: LocationAccuracy.high,
-            distanceFilter: distanceFilter,
-          );
+    final LocationSettings settings;
+    if (!background) {
+      settings = LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: distanceFilter,
+      );
+    } else if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+      // iOS keeps delivering in the background only when asked to, and only
+      // for a stream started in the foreground with the "location" background
+      // mode in Info.plist. Without this, a chofer who switches to WhatsApp
+      // freezes on the customer's map. The blue status-bar pill is iOS's
+      // equivalent of the Android notification, and lets "while in use" do.
+      settings = AppleSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: distanceFilter,
+        activityType: ActivityType.automotiveNavigation,
+        allowBackgroundLocationUpdates: true,
+        showBackgroundLocationIndicator: true,
+        pauseLocationUpdatesAutomatically: false,
+      );
+    } else {
+      settings = AndroidSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: distanceFilter,
+        // Without a foreground service Android stops delivering updates
+        // within minutes of the screen going off, which for a chofer means
+        // vanishing from dispatch mid-shift.
+        foregroundNotificationConfig: const ForegroundNotificationConfig(
+          notificationTitle: 'Drakegruas Express',
+          notificationText: 'Compartiendo tu ubicación mientras trabajas',
+          enableWakeLock: true,
+          setOngoing: true,
+        ),
+      );
+    }
 
     return _geolocator.getPositionStream(locationSettings: settings);
   }
