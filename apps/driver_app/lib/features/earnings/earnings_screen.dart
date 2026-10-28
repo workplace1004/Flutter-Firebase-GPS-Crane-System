@@ -29,8 +29,16 @@ class _EarningsScreenState extends ConsumerState<EarningsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final summary = ref.watch(driverEarningsProvider).value;
+    final earnings = ref.watch(driverEarningsProvider);
+    final uid = ref.watch(currentUserIdProvider) ?? '';
     final text = Theme.of(context).textTheme;
+
+    // No document is not "still loading": the server only creates the rollup
+    // when the chofer completes their first job, so a new chofer has none and
+    // simply earned nothing yet. Treating it as loading spun forever.
+    final summary = earnings.hasValue
+        ? earnings.value ?? EarningsSummary(driverId: uid)
+        : null;
 
     return Scaffold(
       backgroundColor: BrandColors.offWhite,
@@ -39,7 +47,15 @@ class _EarningsScreenState extends ConsumerState<EarningsScreen> {
         title: const Text('Mis ganancias'),
       ),
       body: summary == null
-          ? const BrandLoader()
+          ? earnings.hasError
+              ? EmptyState(
+                  title: 'No pudimos cargar tus ganancias',
+                  message: 'Revisa tu conexión e inténtalo de nuevo.',
+                  icon: Icons.cloud_off_outlined,
+                  actionLabel: 'Reintentar',
+                  onAction: () => ref.invalidate(driverEarningsProvider),
+                )
+              : const BrandLoader()
           : ListView(
               padding: const EdgeInsets.all(Insets.lg),
               children: [
