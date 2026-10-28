@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:grua_core/grua_core.dart';
 
 import '../../router.dart';
+import 'registration_controller.dart';
 
 /// Dominican mobile prefixes. Numbers here are +1 with one of these area
 /// codes, so validating on them catches the common typo of a missing digit
@@ -42,21 +45,30 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen> {
       _error = null;
     });
 
+    // A plain sign-in. Answers left by a registration the customer abandoned
+    // would otherwise be written onto whichever account signs in here.
+    ref.read(registrationControllerProvider.notifier).clear();
+
     final e164 = '+1$_digits';
     final result =
         await ref.read(authRepositoryProvider).startPhoneVerification(e164);
     if (!mounted) return;
 
-    result.fold(
-      (verificationId) => context.push(
-        '${Routes.otp}?vid=$verificationId&phone=${Uri.encodeComponent(e164)}',
-      ),
-      (failure) => setState(() {
-        _sending = false;
+    switch (result) {
+      // Android verified the number without a code; the router moves on.
+      case Ok(value: AuthRepository.phoneSignedIn):
+        break;
+      case Ok(value: final verificationId):
+        unawaited(
+          context.push(
+            '${Routes.otp}?vid=$verificationId'
+            '&phone=${Uri.encodeComponent(e164)}',
+          ),
+        );
+      case Err(:final failure):
         _error = failure.userMessage;
-      }),
-    );
-    if (mounted && result.isOk) setState(() => _sending = false);
+    }
+    setState(() => _sending = false);
   }
 
   @override

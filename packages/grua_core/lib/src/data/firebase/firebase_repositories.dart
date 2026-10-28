@@ -178,11 +178,6 @@ class FirebaseAuthRepository implements AuthRepository {
 
   final fb.FirebaseAuth _auth;
 
-  /// Android can verify an SMS without the user typing anything. When that
-  /// happens there is no code to confirm, so the credential is parked here and
-  /// [confirmSmsCode] uses it instead of the digits.
-  fb.PhoneAuthCredential? _autoRetrieved;
-
   @override
   String? get currentUserId => _auth.currentUser?.uid;
 
@@ -218,7 +213,22 @@ class FirebaseAuthRepository implements AuthRepository {
     unawaited(
       _auth.verifyPhoneNumber(
         phoneNumber: e164Phone,
-        verificationCompleted: (credential) => _autoRetrieved = credential,
+        // Android verified the number by itself: instantly, with no SMS at
+        // all, or by reading the SMS once it arrived. Signing in here is what
+        // ends the flow either way. Parking the credential for a later
+        // confirmSmsCode left the instant case waiting 60 s for a code that
+        // never comes, and let a credential for one number be used after the
+        // customer had gone back and typed another.
+        verificationCompleted: (credential) async {
+          try {
+            await _auth.signInWithCredential(credential);
+            finish(const Result.ok(AuthRepository.phoneSignedIn));
+          } on Object catch (error) {
+            // Before codeSent this is the only answer the caller gets; after
+            // it, the code screen is open and typing the code still works.
+            finish(Result.err(_mapError(error)));
+          }
+        },
         verificationFailed: (error) => finish(Result.err(_mapError(error))),
         codeSent: (verificationId, _) => finish(Result.ok(verificationId)),
         codeAutoRetrievalTimeout: (verificationId) =>
@@ -235,15 +245,12 @@ class FirebaseAuthRepository implements AuthRepository {
     required String verificationId,
     required String smsCode,
   }) =>
-      _guard(() async {
-        final credential = _autoRetrieved ??
+      _guard(() => _auth.signInWithCredential(
             fb.PhoneAuthProvider.credential(
               verificationId: verificationId,
               smsCode: smsCode,
-            );
-        _autoRetrieved = null;
-        await _auth.signInWithCredential(credential);
-      });
+            ),
+          ));
 
   @override
   Future<Result<void>> signInWithEmail(String email, String password) =>

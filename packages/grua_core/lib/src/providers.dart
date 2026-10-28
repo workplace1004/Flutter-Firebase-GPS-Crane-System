@@ -223,10 +223,27 @@ final currentUserProvider = StreamProvider<AppUser?>((ref) {
 /// Watch it once near the root of the app. It re-runs whenever the uid changes,
 /// which covers both a fresh sign-in and a cold start on an existing session,
 /// and the callable is idempotent so the repeat costs one read.
+///
+/// A failed call is retried, because the moment right after signing in is
+/// exactly when a phone is most likely to be on a poor connection, and nothing
+/// else would run it again until the next launch.
 final ensureProfileProvider = FutureProvider<void>((ref) async {
   final uid = ref.watch(currentUserIdProvider);
   if (uid == null) return;
-  await ref.read(functionsGatewayProvider).ensureProfile();
+  final gateway = ref.read(functionsGatewayProvider);
+
+  const attempts = 3;
+  for (var attempt = 1; ; attempt++) {
+    final result = await gateway.ensureProfile();
+    if (result case Err(:final failure)) {
+      if (attempt == attempts) throw failure;
+      await Future<void>.delayed(Duration(seconds: 2 * attempt));
+      // Signed out, or somebody else signed in, while we waited.
+      if (!ref.mounted) return;
+      continue;
+    }
+    return;
+  }
 });
 
 /// The signed-in chofer's record.

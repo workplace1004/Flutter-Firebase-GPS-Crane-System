@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Client App</string>
+	<string>Drakegruas</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -24,6 +24,26 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<!-- Phone sign-in. When the silent push that proves this is a real iPhone
+	     does not arrive (always on the simulator, sometimes on a device),
+	     Firebase falls back to a reCAPTCHA page that returns through this
+	     scheme: the iOS app id from firebase_options.dart with ':' as '-'.
+	     Without it, starting phone sign-in crashes the app. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>app-1-134649057031-ios-83f88c5f4c4c71061affa2</string>
+			</array>
+		</dict>
+	</array>
+	<!-- Only the HTTPS that iOS itself provides: exempt, so App Store Connect
+	     does not ask about export compliance on every build. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>

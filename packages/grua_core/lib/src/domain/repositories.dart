@@ -45,9 +45,14 @@ abstract interface class AuthRepository {
   /// claims. Null for anyone else.
   Future<String?> currentInsurerId({bool forceRefresh = false});
 
+  /// Returned by [startPhoneVerification] instead of a verification id when
+  /// the phone was verified without a code (Android instant verification) and
+  /// the sign-in already happened. There is no code to ask for.
+  static const phoneSignedIn = 'signed-in';
+
   /// Starts phone verification. Returns a verification id to pass to
-  /// [confirmSmsCode], or completes the sign-in directly on Android
-  /// auto-retrieval.
+  /// [confirmSmsCode], or [phoneSignedIn] when Android verified the number on
+  /// its own and the sign-in is already done.
   Future<Result<String>> startPhoneVerification(String e164Phone);
 
   Future<Result<void>> confirmSmsCode({

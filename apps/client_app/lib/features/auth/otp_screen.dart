@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:grua_core/grua_core.dart';
 
-import 'registration_controller.dart';
 
 class OtpScreen extends ConsumerStatefulWidget {
   const OtpScreen({required this.verificationId, required this.phone, super.key});
@@ -24,6 +23,11 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
 
   var _verifying = false;
   String? _error;
+
+  /// The id the code is checked against. Every SMS comes with its own, so a
+  /// resend replaces it: checking the new code against the first id is always
+  /// "código incorrecto".
+  late String _verificationId = widget.verificationId;
 
   /// Resend is locked for a minute. Without it, a user tapping "reenviar"
   /// impatiently burns SMS credit and hits the provider's rate limit, which
@@ -64,50 +68,44 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     });
 
     final result = await ref.read(authRepositoryProvider).confirmSmsCode(
-          verificationId: widget.verificationId,
+          verificationId: _verificationId,
           smsCode: code,
         );
     if (!mounted) return;
 
-    if (result.isErr) {
-      final failure = result.fold((_) => null, (failure) => failure)!;
+    // Signed in: the router leaves this screen (home, or the profile step for
+    // a new account), and the app root writes any registration answers.
+    if (result case Err(:final failure)) {
       setState(() {
         _verifying = false;
         _error = failure.userMessage;
         _controller.clear();
         _focus.requestFocus();
       });
-      return;
     }
-
-    // Signed in. If this code came from the register screen there are answers
-    // waiting to be written, and they can only be written now that there is an
-    // account to write them to. It is a no-op for a plain sign-in.
-    final applied =
-        await ref.read(registrationControllerProvider.notifier).apply();
-    if (!mounted) return;
-
-    // From here the router's redirect takes over: once the profile stream
-    // reports a name it sends us home, and without one to the profile step.
-    setState(() {
-      _verifying = false;
-      // The account exists either way, so a failure here is not a dead end -
-      // say so and let the profile step collect what did not save.
-      _error = applied.fold(
-        (_) => null,
-        (failure) => failure.userMessage,
-      );
-    });
   }
 
   Future<void> _resend() async {
     if (_secondsLeft > 0) return;
-    await ref.read(authRepositoryProvider).startPhoneVerification(widget.phone);
+    final result =
+        await ref.read(authRepositoryProvider).startPhoneVerification(widget.phone);
     if (!mounted) return;
-    _startCooldown();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Código reenviado.')),
-    );
+
+    switch (result) {
+      // Android verified the number on its own; the router takes it from here.
+      case Ok(value: AuthRepository.phoneSignedIn):
+        return;
+      case Ok(value: final verificationId):
+        _verificationId = verificationId;
+        _controller.clear();
+        _startCooldown();
+        setState(() => _error = null);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Código reenviado.')),
+        );
+      case Err(:final failure):
+        setState(() => _error = failure.userMessage);
+    }
   }
 
   @override

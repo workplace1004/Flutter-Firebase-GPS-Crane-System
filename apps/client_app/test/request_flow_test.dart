@@ -89,17 +89,14 @@ Future<void> main() async {
     expect(find.byTooltip('Centrar en mi ubicación'), findsOneWidget);
   });
 
-  testWidgets('registering carries the form answers onto the new profile',
-      (tester) async {
-    await tester.pumpWidget(harness(DemoBackend()..seed()));
-    await tester.pumpAndSettle();
-
+  /// Fills the register form and confirms the code.
+  Future<void> register(WidgetTester tester, {required String name}) async {
     await tester.tap(find.text('Registrarme'));
     await tester.pumpAndSettle();
     expect(find.text('Crear tu cuenta'), findsOneWidget);
 
     final fields = find.byType(TextFormField);
-    await tester.enterText(fields.at(0), 'Andrés Familia');
+    await tester.enterText(fields.at(0), name);
     await tester.enterText(fields.at(1), '8095551234');
     await tester.pumpAndSettle();
 
@@ -112,11 +109,58 @@ Future<void> main() async {
     await tester.pumpAndSettle(const Duration(seconds: 1));
 
     await tester.enterText(find.byType(TextField).first, '123456');
-    await tester.pumpAndSettle(const Duration(seconds: 1));
+    await tester.pump();
+  }
+
+  /// Pumps until [finder] shows. Not pumpAndSettle: the home map's nearby
+  /// search animates for its whole run, so settling would carry on well past
+  /// a notice that only stays up for a few seconds.
+  Future<void> waitFor(WidgetTester tester, Finder finder) async {
+    for (var i = 0; i < 50 && finder.evaluate().isEmpty; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+  }
+
+  testWidgets('registering carries the form answers onto the new profile',
+      (tester) async {
+    // A number with no account yet: the server has just made the blank
+    // `users/` document that every new sign-in gets.
+    final backend = DemoBackend()
+      ..seed()
+      ..upsertUser(const AppUser(id: 'demo-client-new', phone: '+18095551234'))
+      ..currentUserId = 'demo-client-new';
+    await tester.pumpWidget(harness(backend));
+    await tester.pumpAndSettle();
+
+    await register(tester, name: 'Andrés Familia');
 
     // The name was typed before the account existed. Seeing it in the greeting
     // proves it survived the SMS step and was written afterwards.
-    expect(find.text('Hola, Andrés'), findsOneWidget);
+    final greeting = find.text('Hola, Andrés');
+    await waitFor(tester, greeting);
+    expect(greeting, findsOneWidget);
+    // A new account: nothing to say about an existing one.
+    expect(find.textContaining('Ya tenías una cuenta'), findsNothing);
+    // Lets the nearby search run out, so no timer outlives the test.
+    await tester.pumpAndSettle(const Duration(seconds: 1));
+  });
+
+  testWidgets('registering with a number that has an account keeps its profile',
+      (tester) async {
+    // The seeded customer, Ramón Peña, owns this number.
+    await tester.pumpWidget(harness(DemoBackend()..seed()));
+    await tester.pumpAndSettle();
+
+    await register(tester, name: 'Andrés Familia');
+
+    // The answers are saved in several round trips after the sign-in, each
+    // with the demo's simulated latency; the notice comes after the last.
+    final notice = find.textContaining('Ya tenías una cuenta');
+    await waitFor(tester, notice);
+
+    expect(notice, findsOneWidget);
+    expect(find.text('Hola, Ramón'), findsOneWidget);
+    await tester.pumpAndSettle(const Duration(seconds: 1));
   });
 
   test('a short verification code is rejected with a specific message', () async {

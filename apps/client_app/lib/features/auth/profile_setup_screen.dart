@@ -42,6 +42,18 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       _error = null;
     });
 
+    // The document may still be missing if creating it failed after sign-in,
+    // and the update below cannot create it. Idempotent when it exists.
+    final created = await ref.read(functionsGatewayProvider).ensureProfile();
+    if (!mounted) return;
+    if (created case Err(:final failure)) {
+      setState(() {
+        _saving = false;
+        _error = failure.userMessage;
+      });
+      return;
+    }
+
     final result = await ref.read(userRepositoryProvider).updateProfile(
           uid,
           name: _name.text.trim(),

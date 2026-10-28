@@ -95,8 +95,15 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       if (!signedIn) return onAuthFlow ? null : Routes.welcome;
 
-      final user = ref.read(currentUserProvider).value;
-      if (user != null && !user.hasProfile) {
+      // Hold until the profile has loaded once. After that, no document is
+      // the same as no name: the server has not made it yet, or making it
+      // failed, and either way the profile step is where it gets fixed.
+      // Treating "no document" as complete sent a brand-new customer home
+      // with no name for the chofer to ask for.
+      final profile = ref.read(currentUserProvider);
+      if (profile.isLoading && !profile.hasValue) return null;
+      final user = profile.value;
+      if (user == null || !user.hasProfile) {
         return location == Routes.profileSetup ? null : Routes.profileSetup;
       }
 

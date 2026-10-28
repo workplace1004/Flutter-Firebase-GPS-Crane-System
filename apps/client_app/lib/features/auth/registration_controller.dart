@@ -67,11 +67,17 @@ class RegistrationController extends Notifier<RegistrationDraft?> {
   /// awaited here rather than left to the root provider, whose timing this
   /// flow cannot depend on.
   ///
-  /// Returns ok when there was nothing held, so the caller can run it after
-  /// every sign-in without asking whether this was a registration.
-  Future<Result<void>> apply() async {
+  /// Registering with a number that already has an account signs in to that
+  /// account: the SMS proved the phone is theirs. Its name, email and address
+  /// are kept and only empty ones are filled from the form, and the vehicle is
+  /// added beside the ones already saved instead of replacing the first.
+  ///
+  /// Returns ok(true) when that happened, so the customer can be told they
+  /// were already registered. Returns ok(false) when there was nothing held,
+  /// so it is safe to run after every sign-in.
+  Future<Result<bool>> apply() async {
     final draft = state;
-    if (draft == null) return const Result.ok(null);
+    if (draft == null) return const Result.ok(false);
 
     final uid = ref.read(authRepositoryProvider).currentUserId;
     if (uid == null) {
@@ -79,25 +85,38 @@ class RegistrationController extends Notifier<RegistrationDraft?> {
     }
 
     final created = await ref.read(functionsGatewayProvider).ensureProfile();
-    if (created.isErr) return created;
+    if (created case Err(:final failure)) return Result.err(failure);
 
     final users = ref.read(userRepositoryProvider);
+    final existing = (await users.fetchUser(uid)).valueOrNull;
+    final hadAccount = existing?.hasProfile ?? false;
+
+    String? fill(String? current, String typed) =>
+        (current ?? '').trim().isEmpty ? typed : null;
+
     final saved = await users.updateProfile(
       uid,
-      name: draft.name,
-      email: draft.email,
-      address: draft.address,
+      name: hadAccount ? fill(existing!.name, draft.name) : draft.name,
+      email: hadAccount ? fill(existing!.email, draft.email) : draft.email,
+      address:
+          hadAccount ? fill(existing!.address, draft.address) : draft.address,
     );
-    if (saved.isErr) return saved;
+    if (saved case Err(:final failure)) return Result.err(failure);
 
     if (draft.hasVehicle) {
-      final stored = await users.saveVehicle(uid, draft.vehicle);
-      if (stored.isErr) return stored;
+      final stored = hadAccount
+          ? await users.saveVehicle(
+              uid,
+              draft.vehicle,
+              id: 'registro-${DateTime.now().millisecondsSinceEpoch}',
+            )
+          : await users.saveVehicle(uid, draft.vehicle);
+      if (stored case Err(:final failure)) return Result.err(failure);
     }
 
     // Only cleared once everything landed, so a retry still has the answers.
     state = null;
-    return const Result.ok(null);
+    return Result.ok(hadAccount);
   }
 }
 

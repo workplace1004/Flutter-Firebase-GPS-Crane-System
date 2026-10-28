@@ -1,9 +1,56 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:grua_core/grua_core.dart';
 
+import 'features/auth/registration_controller.dart';
 import 'push_routes.dart';
 import 'router.dart';
+
+/// Messages that outlive the screen they came from: the code screen is gone by
+/// the time the registration answers are saved, so it cannot show the result.
+final _messenger = GlobalKey<ScaffoldMessengerState>();
+
+/// Writes the register form's answers onto the account that just signed in.
+///
+/// Here at the root rather than on the code screen: the router leaves that
+/// screen the moment the sign-in lands, and Android's instant verification
+/// signs in without ever opening it.
+Future<void> _applyRegistration(WidgetRef ref) async {
+  final result =
+      await ref.read(registrationControllerProvider.notifier).apply();
+  final messenger = _messenger.currentState;
+  if (messenger == null) return;
+
+  result.fold(
+    (hadAccount) {
+      if (!hadAccount) return;
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Ya tenías una cuenta con este número. Entraste a ella y '
+            'conservamos tus datos.',
+          ),
+          duration: Duration(seconds: 8),
+        ),
+      );
+    },
+    (failure) => messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          'No pudimos guardar todos tus datos del registro. '
+          '${failure.userMessage}',
+        ),
+        duration: const Duration(seconds: 10),
+        action: SnackBarAction(
+          label: 'Reintentar',
+          onPressed: () => _applyRegistration(ref),
+        ),
+      ),
+    ),
+  );
+}
 
 class ClientApp extends ConsumerWidget {
   const ClientApp({super.key});
@@ -16,9 +63,14 @@ class ClientApp extends ConsumerWidget {
     // document until the server makes one, and every screen that reads a
     // profile waits forever without it. Watching from the root means it runs
     // on a fresh sign-in and on a cold start of an existing session alike.
-    ref.watch(ensureProfileProvider);
+    ref
+      ..watch(ensureProfileProvider)
+      ..listen(currentUserIdProvider, (previous, uid) {
+        if (previous == null && uid != null) unawaited(_applyRegistration(ref));
+      });
 
     return MaterialApp.router(
+      scaffoldMessengerKey: _messenger,
       title: config.flavor.appName,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.phone(),

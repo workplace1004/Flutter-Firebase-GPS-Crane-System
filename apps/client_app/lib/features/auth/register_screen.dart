@@ -82,22 +82,27 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         await ref.read(authRepositoryProvider).startPhoneVerification(e164);
     if (!mounted) return;
 
-    result.fold(
-      (verificationId) {
+    switch (result) {
+      // Android verified the number without a code: signed in already, and the
+      // app root writes the held answers.
+      case Ok(value: AuthRepository.phoneSignedIn):
+        setState(() => _sending = false);
+      case Ok(value: final verificationId):
         setState(() => _sending = false);
         unawaited(
           context.push(
-            '${Routes.otp}?vid=$verificationId&phone=${Uri.encodeComponent(e164)}',
+            '${Routes.otp}?vid=$verificationId'
+            '&phone=${Uri.encodeComponent(e164)}',
           ),
         );
-      },
       // The answers stay held: nobody should retype the form to retry an SMS
       // that failed to send.
-      (failure) => setState(() {
-        _sending = false;
-        _error = failure.userMessage;
-      }),
-    );
+      case Err(:final failure):
+        setState(() {
+          _sending = false;
+          _error = failure.userMessage;
+        });
+    }
   }
 
   @override

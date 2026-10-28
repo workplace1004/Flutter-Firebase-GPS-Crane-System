@@ -18,19 +18,21 @@ final demoBackendProvider = Provider<DemoBackend>((ref) {
 ///
 /// Pass a pre-seeded [backend] to control the fixture, and [actingAs] to sign
 /// in as somebody other than the seeded customer — the driver app runs the
-/// same wiring as a chofer.
+/// same wiring as a chofer. [authRepository] swaps the sign-in for a test that
+/// needs a phone to behave in a way the demo does not.
 List<Override> demoOverrides({
   DemoBackend? backend,
   UserRole role = UserRole.client,
   String? actingAs,
   VoiceTransport Function()? voiceTransport,
+  AuthRepository? authRepository,
 }) {
   final instance = backend ?? (DemoBackend()..seed());
   if (actingAs != null) instance.currentUserId = actingAs;
   return [
     demoBackendProvider.overrideWithValue(instance),
     authRepositoryProvider.overrideWithValue(
-      DemoAuthRepository(instance, role: role),
+      authRepository ?? DemoAuthRepository(instance, role: role),
     ),
     userRepositoryProvider.overrideWithValue(DemoUserRepository(instance)),
     driverRepositoryProvider.overrideWithValue(DemoDriverRepository(instance)),
